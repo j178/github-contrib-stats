@@ -3,8 +3,10 @@ use std::path::Path;
 use anyhow::{anyhow, bail, Result};
 use git_testament::git_testament;
 
-use github_contrib_stats::github;
-use github_contrib_stats::render::{MarkdownRenderer, Render};
+use crate::render::{MarkdownRenderer, Render};
+
+pub mod github;
+pub mod render;
 
 git_testament!(TESTAMENT);
 
