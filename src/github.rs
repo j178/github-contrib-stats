@@ -2,9 +2,9 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 
 use anyhow::Result;
+use octocrab::{Octocrab, Page};
 use octocrab::models::issues::Issue;
 use octocrab::models::Repository;
-use octocrab::{Octocrab, Page};
 
 const PER_PAGE: u8 = 100;
 
@@ -18,16 +18,15 @@ pub async fn get_created_repos(
             format!("/users/{}/repos", username),
             Some(&[
                 ("per_page", PER_PAGE.to_string()),
-                ("type", "owner".to_string()),
             ]),
         )
         .await?;
 
-    let mut repos: Vec<_> = client
-        .all_pages(page)
-        .await?
+    let repos: Vec<_> = client.all_pages(page).await?;
+
+    let mut repos: Vec<_> = repos
         .into_iter()
-        .filter(|repo| repo.fork.is_none() || repo.stargazers_count.unwrap() > 0)
+        .filter(|repo| repo.stargazers_count.unwrap() > 0 || repo.forks_count.unwrap() > 0)
         .collect();
 
     repos.sort_by(|a, b| b.stargazers_count.cmp(&a.stargazers_count));
