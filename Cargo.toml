@@ -1,0 +1,11 @@
+[package]
+name = "github-contrib-stats"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.71"
+clap = {version = "4.2.7", features = ["env"]}
+octocrab = "0.21.0"
+prettytable = "0.10.0"
+tokio = {version = "1.28.1", features = ["full"]}
