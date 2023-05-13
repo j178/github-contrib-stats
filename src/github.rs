@@ -8,7 +8,11 @@ use octocrab::{Octocrab, Page};
 
 const PER_PAGE: u8 = 100;
 
-pub async fn get_created_repos(client: &Octocrab, username: &str, max_repos: Option<usize>) -> Result<Vec<Repository>> {
+pub async fn get_created_repos(
+    client: &Octocrab,
+    username: &str,
+    max_repos: Option<usize>,
+) -> Result<Vec<Repository>> {
     let page: Page<Repository> = client
         .get(
             format!("/users/{}/repos", username),

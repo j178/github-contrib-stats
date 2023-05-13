@@ -427,12 +427,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad0a93d233ebf96623465aad4046a8d3aa4da22d4f4beba5388838c8a434bbb4"
 
 [[package]]
+name = "git-testament"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "986bf57c808270f3a0a0652c3bfce0f5d667aa5f5b465616dc697c7f390834b1"
+dependencies = [
+ "git-testament-derive",
+ "no-std-compat",
+]
+
+[[package]]
+name = "git-testament-derive"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a782db5866c7ab75f3552dda4cbf34e3e257cc64c963c6ed5af1e12818e8ae6"
+dependencies = [
+ "log",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "time",
+]
+
+[[package]]
 name = "github-contrib-stats"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "git-testament",
  "octocrab",
+ "once_cell",
  "prettytable",
  "tokio",
 ]
@@ -696,6 +721,12 @@ dependencies = [
  "wasi",
  "windows-sys 0.45.0",
 ]
+
+[[package]]
+name = "no-std-compat"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b93853da6d84c2e3c7d730d6473e8817692dd89be387eb01b94d7f108ecb5b8c"
 
 [[package]]
 name = "num-bigint"
