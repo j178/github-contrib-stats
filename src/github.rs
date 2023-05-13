@@ -41,7 +41,6 @@ pub async fn get_created_repos(
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContributedRepo {
     pub full_name: String,
-    pub stargazers_count: u32,
     pub pr_count: u32,
     pub first_pr: Issue,
     pub last_pr: Issue,
@@ -80,7 +79,6 @@ pub async fn get_contributed_repos(
             let last_pr = prs.last().unwrap();
             ContributedRepo {
                 full_name: repo_name,
-                stargazers_count: 0,
                 pr_count: prs.len() as u32,
                 first_pr: first_pr.clone(),
                 last_pr: last_pr.clone(),
