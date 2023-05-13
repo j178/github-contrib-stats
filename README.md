@@ -14,16 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Update README
     steps:
-      - uses: actions/checkout@v4
-      - name: Download github-contribution-stats
+      - uses: actions/checkout@v3
+      - name: Download github-contrib-stats
         uses: robinraju/release-downloader@v1.8
         with:
-          repository: j178/github-contribution-stats
+          repository: j178/github-contrib-stats
           latest: true
-          fileName: "github-contribution-stats*.tar.gz"
+          fileName: "github-contrib-stats*.tar.gz"
           extract: true
       - name: Update stats
-        run: ./github-contribution-stats -u ${{ github.repository_owner }} -o README.md
+        run: ./github-contrib-stats -u ${{ github.repository_owner }} -o README.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit files
