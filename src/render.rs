@@ -94,7 +94,7 @@ impl Render for MarkdownRenderer {
                     repo.last_pr.created_at.format("%Y-%m-%d").to_string(),
                     repo.last_pr.html_url.as_str()
                 ),
-                repo.pr_count,
+                format!("[{}](https://github.com/{}/pulls?q=is%3Apr+author%3A{})", repo.pr_count, repo.full_name, repo.first_pr.user.login)
             ]);
         }
         table.add_row(row![
