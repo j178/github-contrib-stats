@@ -1,7 +1,7 @@
 use octocrab::models::Repository;
 use once_cell::sync::Lazy;
-use prettytable::{row, Table};
 use prettytable::format::TableFormat;
+use prettytable::{row, Table};
 
 use crate::github::ContributedRepo;
 
@@ -73,22 +73,15 @@ impl Render for MarkdownRenderer {
     fn render_contributed_repos(&self, output: &mut String, repos: &[ContributedRepo]) {
         let mut table = Table::new();
         table.set_format(*MARKDOWN_TABLE);
-        table.set_titles(row![
-            "No.", "Name", "Language", "First PR", "Last PR", "PR Count"
-        ]);
+        table.set_titles(row!["No.", "Name", "First PR", "Last PR", "PR Count"]);
 
         for (id, repo) in repos.iter().enumerate() {
             table.add_row(row![
                 id + 1,
                 format!(
-                    "[{}]({})",
-                    repo.repo.full_name.as_ref().unwrap(),
-                    repo.repo.html_url.as_ref().unwrap().as_str()
+                    "[{}](https://github.com/{})",
+                    repo.full_name, repo.full_name
                 ),
-                repo.repo
-                    .language
-                    .as_ref()
-                    .map_or("N/A".to_string(), |x| x.as_str().unwrap().to_string()),
                 format!(
                     "[{}]({})",
                     repo.first_pr.created_at.format("%Y-%m-%d").to_string(),
@@ -101,15 +94,12 @@ impl Render for MarkdownRenderer {
                 ),
                 format!(
                     "[{}](https://github.com/{}/pulls?q=is%3Apr+author%3A{})",
-                    repo.pr_count,
-                    repo.repo.full_name.as_ref().unwrap(),
-                    repo.first_pr.user.login
+                    repo.pr_count, repo.full_name, repo.first_pr.user.login
                 )
             ]);
         }
         table.add_row(row![
             "Total",
-            "",
             "",
             "",
             "",
