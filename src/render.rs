@@ -118,8 +118,8 @@ impl SvgRenderer {
 }
 
 impl Render for SvgRenderer {
-    fn render_created_repos(&self, output: &mut String, _repos: &[Repository]) {
-        output.push_str("".to_string().as_str());
+    fn render_created_repos(&self, output: &mut String, repos: &[Repository]) {
+        MarkdownRenderer::new().render_created_repos(output, repos);
     }
 
     fn render_contributed_repos(&self, output: &mut String, repos: &[ContributedRepo]) {
