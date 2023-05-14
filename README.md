@@ -48,7 +48,7 @@ jobs:
 | No.   | Name                                                                               | Language   | Stars | Forks | Last Update |
 |-------|------------------------------------------------------------------------------------|------------|-------|-------|-------------|
 | 1     | [leetgo](https://github.com/j178/leetgo)                                           | Go         | 381   | 19    | 2023-05-14  |
-| 2     | [chatgpt](https://github.com/j178/chatgpt)                                         | Go         | 353   | 28    | 2023-04-29  |
+| 2     | [chatgpt](https://github.com/j178/chatgpt)                                         | Go         | 354   | 28    | 2023-04-29  |
 | 3     | [fanfou-cli](https://github.com/j178/fanfou-cli)                                   | Python     | 22    | 5     | 2017-06-09  |
 | 4     | [xiaoai-shutdown-my-computer](https://github.com/j178/xiaoai-shutdown-my-computer) | Python     | 17    | 0     | 2023-04-07  |
 | 5     | [tiktoken-go](https://github.com/j178/tiktoken-go)                                 | Go         | 15    | 1     | 2023-04-21  |
@@ -57,14 +57,14 @@ jobs:
 | 8     | [2022](https://github.com/j178/2022)                                               | Python     | 6     | 0     | 2022-12-31  |
 | 9     | [spotlight](https://github.com/j178/spotlight)                                     | Python     | 4     | 0     | 2019-12-04  |
 | 10    | [benchdiff](https://github.com/j178/benchdiff)                                     | Go         | 2     | 0     | 2022-10-30  |
-| 11    | [j178](https://github.com/j178/j178)                                               | N/A        | 2     | 1     | 2023-05-13  |
+| 11    | [j178](https://github.com/j178/j178)                                               | N/A        | 2     | 1     | 2023-05-14  |
 | 12    | [twiyou](https://github.com/j178/twiyou)                                           | Go         | 2     | 0     | 2023-01-09  |
 | 13    | [van](https://github.com/j178/van)                                                 | Python     | 2     | 1     | 2020-08-04  |
 | 14    | [auto-snatch-course](https://github.com/j178/auto-snatch-course)                   | Python     | 1     | 0     | 2018-04-14  |
 | 15    | [course-schedule-icalendar](https://github.com/j178/course-schedule-icalendar)     | Python     | 1     | 0     | 2017-02-10  |
 | 16    | [fanfou-bots](https://github.com/j178/fanfou-bots)                                 | Python     | 1     | 1     | 2020-07-23  |
 | 17    | [json-tutorial](https://github.com/j178/json-tutorial)                             | C          | 1     | 0     | 2017-01-19  |
-| 18    | [leetcode](https://github.com/j178/leetcode)                                       | Go         | 1     | 0     | 2023-05-13  |
+| 18    | [leetcode](https://github.com/j178/leetcode)                                       | Go         | 1     | 0     | 2023-05-14  |
 | 19    | [naive-sshd](https://github.com/j178/naive-sshd)                                   | Go         | 1     | 0     | 2019-10-15  |
 | 20    | [neu6v-crawler](https://github.com/j178/neu6v-crawler)                             | Python     | 1     | 0     | 2016-10-29  |
 | 21    | [scoop-bucket](https://github.com/j178/scoop-bucket)                               | PowerShell | 1     | 0     | 2023-05-14  |
@@ -72,7 +72,7 @@ jobs:
 | 23    | [GreedySnake](https://github.com/j178/GreedySnake)                                 | Java       | 0     | 1     | 2016-11-01  |
 | 24    | [MyWechat](https://github.com/j178/MyWechat)                                       | PHP        | 0     | 1     | 2015-12-24  |
 | 25    | [pyrandom](https://github.com/j178/pyrandom)                                       | Python     | 0     | 1     | 2019-04-09  |
-| Total |                                                                                    |            | 832   | 59    |             |
+| Total |                                                                                    |            | 833   | 59    |             |
 <!-- END:created_repos -->
 
 ## Repos I've Contributed To

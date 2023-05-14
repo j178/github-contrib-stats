@@ -85,16 +85,16 @@ impl Render for MarkdownRenderer {
                 format!(
                     "[{}]({})",
                     repo.first_pr.created_at.format("%Y-%m-%d").to_string(),
-                    repo.first_pr.html_url.as_str()
+                    repo.first_pr.url.as_str()
                 ),
                 format!(
                     "[{}]({})",
                     repo.last_pr.created_at.format("%Y-%m-%d").to_string(),
-                    repo.last_pr.html_url.as_str()
+                    repo.last_pr.url.as_str()
                 ),
                 format!(
                     "[{}](https://github.com/{}/pulls?q=is%3Apr+author%3A{})",
-                    repo.pr_count, repo.full_name, repo.first_pr.user.login
+                    repo.pr_count, repo.full_name, "xxx"
                 )
             ]);
         }

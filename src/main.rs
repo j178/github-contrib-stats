@@ -10,6 +10,8 @@ git_testament!(TESTAMENT);
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
+
     let matches = clap::Command::new("github-contrib-stats")
         .version(TESTAMENT.branch_name.unwrap_or("v0.1.0"))
         .author("j178")
