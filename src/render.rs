@@ -19,7 +19,12 @@ static MARKDOWN_TABLE: Lazy<TableFormat> = Lazy::new(|| {
 
 pub trait Render {
     fn render_created_repos(&self, output: &mut String, repos: &[Repository]);
-    fn render_contributed_repos(&self, output: &mut String, repos: &[ContributedRepo], author: &str);
+    fn render_contributed_repos(
+        &self,
+        output: &mut String,
+        repos: &[ContributedRepo],
+        author: &str,
+    );
 }
 
 pub struct MarkdownRenderer {}
@@ -70,7 +75,12 @@ impl Render for MarkdownRenderer {
         output.push_str(table.to_string().as_str());
     }
 
-    fn render_contributed_repos(&self, output: &mut String, repos: &[ContributedRepo], author: &str) {
+    fn render_contributed_repos(
+        &self,
+        output: &mut String,
+        repos: &[ContributedRepo],
+        author: &str,
+    ) {
         let mut table = Table::new();
         table.set_format(*MARKDOWN_TABLE);
         table.set_titles(row!["No.", "Name", "First PR", "Last PR", "PR Count"]);
@@ -122,7 +132,12 @@ impl Render for SvgRenderer {
         MarkdownRenderer::new().render_created_repos(output, repos);
     }
 
-    fn render_contributed_repos(&self, output: &mut String, repos: &[ContributedRepo], author: &str) {
+    fn render_contributed_repos(
+        &self,
+        output: &mut String,
+        repos: &[ContributedRepo],
+        author: &str,
+    ) {
         MarkdownRenderer::new().render_contributed_repos(output, repos, author);
     }
 }
