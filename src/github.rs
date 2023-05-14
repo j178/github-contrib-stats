@@ -2,9 +2,10 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 
 use anyhow::Result;
+use log::debug;
+use octocrab::{Octocrab, Page};
 use octocrab::models::issues::Issue;
 use octocrab::models::Repository;
-use octocrab::{Octocrab, Page};
 
 const PER_PAGE: u8 = 100;
 
@@ -19,18 +20,22 @@ pub async fn get_created_repos(
             Some(&[("per_page", PER_PAGE.to_string())]),
         )
         .await?;
+    debug!("Got first page of repos");
 
     let repos: Vec<_> = client.all_pages(page).await?;
+    debug!("Got all pages of repos");
 
     let mut repos: Vec<_> = repos
         .into_iter()
         .filter(|repo| repo.stargazers_count.unwrap() > 0 || repo.forks_count.unwrap() > 0)
         .collect();
+    debug!("Filtered repos");
 
     repos.sort_by(|a, b| b.stargazers_count.cmp(&a.stargazers_count));
     if let Some(n) = max_repos {
         repos.truncate(n);
     }
+    debug!("Sorted repos");
 
     Ok(repos)
 }
@@ -55,6 +60,7 @@ pub async fn get_contributed_repos(
         .send()
         .await?;
 
+    debug!("Got first page of prs");
     let groups = client
         .all_pages(page)
         .await?
@@ -70,6 +76,7 @@ pub async fn get_contributed_repos(
             groups.entry(repo_key).or_insert_with(Vec::new).push(pr);
             groups
         });
+    debug!("Got all pages of prs");
 
     let mut repos = Vec::new();
     for (repo_key, mut prs) in groups.into_iter() {
@@ -84,11 +91,13 @@ pub async fn get_contributed_repos(
             last_pr: last_pr.clone(),
         });
     }
+    debug!("Got repo info");
 
     repos.sort_by_key(|repo| Reverse((repo.pr_count, repo.last_pr.created_at)));
     if let Some(n) = max_repos {
         repos.truncate(n);
     }
+    debug!("Sorted repos");
 
     Ok(repos)
 }

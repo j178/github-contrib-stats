@@ -1,7 +1,7 @@
 use octocrab::models::Repository;
 use once_cell::sync::Lazy;
-use prettytable::format::TableFormat;
 use prettytable::{row, Table};
+use prettytable::format::TableFormat;
 
 use crate::github::ContributedRepo;
 
@@ -116,5 +116,23 @@ impl Render for MarkdownRenderer {
             repos.iter().map(|x| x.pr_count).sum::<u32>(),
         ]);
         output.push_str(table.to_string().as_str());
+    }
+}
+
+pub struct SvgRenderer {}
+
+impl SvgRenderer {
+    pub fn new() -> Self {
+        SvgRenderer {}
+    }
+}
+
+impl Render for SvgRenderer {
+    fn render_created_repos(&self, output: &mut String, _repos: &[Repository]) {
+        output.push_str("".to_string().as_str());
+    }
+
+    fn render_contributed_repos(&self, output: &mut String, repos: &[ContributedRepo]) {
+        MarkdownRenderer::new().render_contributed_repos(output, repos);
     }
 }

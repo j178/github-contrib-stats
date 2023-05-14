@@ -5,9 +5,6 @@ use git_testament::git_testament;
 
 use crate::render::{MarkdownRenderer, Render};
 
-pub mod github;
-pub mod render;
-
 git_testament!(TESTAMENT);
 
 #[tokio::main]
