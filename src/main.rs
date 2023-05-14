@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
         render.render_created_repos(&mut part_buf, &created_repos);
         replace_template(&mut buf, "created_repos", &part_buf)?;
         part_buf.clear();
-        render.render_contributed_repos(&mut part_buf, &contributed_repos);
+        render.render_contributed_repos(&mut part_buf, &contributed_repos, username);
         replace_template(&mut buf, "contributed", &part_buf)?;
 
         std::fs::write(output, buf)?;

@@ -144,7 +144,6 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
     let (total_count, prs) = get_all_pages(client, body.clone()).await?;
 
     let mut min_created_at = prs.last().unwrap().created_at.clone();
-    info!("total: {}", total_count);
 
     let mut all_prs = Vec::with_capacity(total_count as usize);
     all_prs.extend(prs);

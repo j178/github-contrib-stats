@@ -40,7 +40,7 @@ pub async fn handler(req: Request) -> Result<Response<Body>, Error> {
     let repos = github::get_contributed_repos(&client, username, max_repos).await?;
 
     let mut buf = String::new();
-    SvgRenderer::new().render_contributed_repos(&mut buf, &repos);
+    SvgRenderer::new().render_contributed_repos(&mut buf, &repos, username);
 
     Ok(Response::builder()
         .status(StatusCode::OK)
