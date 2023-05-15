@@ -129,10 +129,8 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
 }
     "#;
 
-    let first_query = format!(
-        "author:{} type:pr is:public sort:created-desc -user:{}",
-        username, username
-    );
+    let first_query =
+        format!("author:{username} type:pr is:public sort:created-desc -user:{username}");
 
     let mut body = json!({
         "query": query,
@@ -174,7 +172,7 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
     }
 
     let groups = all_prs.into_iter().fold(HashMap::new(), |mut groups, pr| {
-        let paths: Vec<_> = pr.url.split("/").collect();
+        let paths: Vec<_> = pr.url.split('/').collect();
         let repo_name = format!("{}/{}", paths[paths.len() - 4], paths[paths.len() - 3]);
 
         groups.entry(repo_name).or_insert_with(Vec::new).push(pr);

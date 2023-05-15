@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         .get_matches();
 
     let username = matches.get_one::<String>("username").unwrap();
-    let max_repos = matches.get_one::<usize>("max-repos").map(|n| *n);
+    let max_repos = matches.get_one::<usize>("max-repos").copied();
     let client = octocrab::OctocrabBuilder::new()
         .personal_token(matches.get_one::<String>("token").unwrap().clone())
         .build()?;

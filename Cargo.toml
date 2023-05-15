@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.71"
 chrono = "0.4.24"
-clap = {version = "4.2.7", features = ["env"]}
+clap = { version = "4.2.7", features = ["env"] }
 env_logger = "0.10.0"
 git-testament = "0.2.4"
 log = "0.4.17"
@@ -16,7 +16,7 @@ prettytable = "0.10.0"
 serde = { version = "1.0.163", features = ["derive"] }
 serde_json = "1.0.96"
 svg = "0.13.1"
-tokio = {version = "1.28.1", features = ["full"]}
+tokio = { version = "1.28.1", features = ["full"] }
 url = "2.3.1"
 vercel_runtime = "0.3.4"
 

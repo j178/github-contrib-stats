@@ -57,7 +57,7 @@ impl Render for MarkdownRenderer {
                     .map_or("N/A".to_string(), |x| x.as_str().unwrap().to_string()),
                 repo.stargazers_count.unwrap(),
                 repo.forks_count.unwrap(),
-                repo.pushed_at.unwrap().format("%Y-%m-%d").to_string(),
+                repo.pushed_at.unwrap().format("%Y-%m-%d"),
             ]);
         }
         table.add_row(row![
@@ -94,12 +94,12 @@ impl Render for MarkdownRenderer {
                 ),
                 format!(
                     "[{}]({})",
-                    repo.first_pr.created_at.format("%Y-%m-%d").to_string(),
+                    repo.first_pr.created_at.format("%Y-%m-%d"),
                     repo.first_pr.url.as_str()
                 ),
                 format!(
                     "[{}]({})",
-                    repo.last_pr.created_at.format("%Y-%m-%d").to_string(),
+                    repo.last_pr.created_at.format("%Y-%m-%d"),
                     repo.last_pr.url.as_str()
                 ),
                 format!(
