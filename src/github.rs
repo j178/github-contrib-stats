@@ -106,7 +106,8 @@ pub async fn get_contributed_repos(
     // For authenticated requests, you can make up to 30 requests per minute for all search endpoints except for the "Search code" endpoint.
     // The "Search code" endpoint requires you to authenticate and limits you to 10 requests per minute.
     // For unauthenticated requests, the rate limit allows you to make up to 10 requests per minute.
-    // todo search returns 1000 results max, regardless of the actual matches, use `created:<YYYY-MM-DD` to filter
+
+    // search returns 1000 results max, regardless of the actual matches, use `created:<YYYY-MM-DD` to filter
     // sort:created or sort:created-desc (default)
     let query = r#"
 query ($q: String!, $perPage: Int!, $cursor: String) {
@@ -144,7 +145,7 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
     let (total_count, prs) = get_all_pages(client, body.clone()).await?;
 
     let mut min_created_at = match prs.last() {
-        Some(pr) => pr.created_at.clone(),
+        Some(pr) => pr.created_at,
         None => return Ok(Vec::new()),
     };
 
@@ -166,7 +167,7 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
         ));
         let (_, prs) = get_all_pages(client, body.clone()).await?;
         match prs.last() {
-            Some(pr) => min_created_at = pr.created_at.clone(),
+            Some(pr) => min_created_at = pr.created_at,
             None => break,
         }
         all_prs.extend(prs);
