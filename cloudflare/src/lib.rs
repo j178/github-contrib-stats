@@ -32,7 +32,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
     router
         .get("/", |_, _| Response::ok("Hello from Workers!"))
         .get_async("/created", |req, _ctx| async move {
-            let url = req.url().unwrap();
+            let url = req.url()?;
             let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
             let username = query
                 .get("username")
@@ -49,7 +49,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
             Response::ok(buf)
         })
         .get_async("/contributed", |req, _ctx| async move {
-            let url = req.url().unwrap();
+            let url = req.url()?;
             let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
             let username = query
                 .get("username")
