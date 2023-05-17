@@ -6,8 +6,7 @@ use octocrab::OctocrabBuilder;
 use url::Url;
 use vercel_runtime::{run, Body, Error, Request, Response, StatusCode};
 
-use github_contrib_stats::github;
-use github_contrib_stats::render::{Render, SvgRenderer};
+use github_contrib_stats::{self as github, MarkdownRenderer, Render, SvgRenderer};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -38,11 +37,7 @@ pub async fn render_created_repos(req: Request) -> Result<Response<Body>, Error>
     let username = query.get("username").ok_or(anyhow!("name not found"))?;
     let max_repos = query.get("max_repos").and_then(|x| x.parse::<usize>().ok());
 
-    let client = OctocrabBuilder::new()
-        .personal_token(std::env::var("GITHUB_TOKEN")?)
-        .build()?;
-
-    let repos = github::get_created_repos(&client, username, max_repos).await?;
+    let repos = github::get_created_repos(username, max_repos).await?;
 
     let mut buf = String::new();
     SvgRenderer::new().render_created_repos(&mut buf, &repos);
@@ -60,11 +55,7 @@ pub async fn render_contributed_repos(req: Request) -> Result<Response<Body>, Er
     let username = query.get("username").ok_or(anyhow!("name not found"))?;
     let max_repos = query.get("max_repos").and_then(|x| x.parse::<usize>().ok());
 
-    let client = OctocrabBuilder::new()
-        .personal_token(std::env::var("GITHUB_TOKEN")?)
-        .build()?;
-
-    let repos = github::get_contributed_repos(&client, username, max_repos).await?;
+    let repos = github::get_contributed_repos(username, max_repos).await?;
 
     let mut buf = String::new();
     SvgRenderer::new().render_contributed_repos(&mut buf, &repos, username);

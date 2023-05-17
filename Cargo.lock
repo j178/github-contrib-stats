@@ -300,6 +300,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a2dd5a6fe8c6e3502f568a6353e5273bbb15193ad9a89e457b9970798efbea1"
 
 [[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "env_logger",
+ "git-testament",
+ "github-contrib-stats",
+ "tokio",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -609,9 +621,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "clap",
- "env_logger",
- "git-testament",
  "http",
  "log",
  "once_cell",
@@ -620,7 +629,6 @@ dependencies = [
  "serde",
  "serde_json",
  "svg",
- "tokio",
 ]
 
 [[package]]

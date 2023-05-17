@@ -1,12 +1,11 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::time::Duration;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use http::{HeaderMap, HeaderValue};
+use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use log::info;
 use once_cell::sync::Lazy;
 use reqwest::Client;
@@ -22,11 +21,20 @@ static CLIENT: Lazy<Client> = Lazy::new(|| {
     headers.insert(USER_AGENT, HeaderValue::from_static("github-contrib-stats"));
     headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", &token)).unwrap());
 
-    Client::builder()
-        .default_headers(headers)
-        .connect_timeout(Duration::from_secs(500))
-        .build()
-        .unwrap()
+    let mut builder = Client::builder()
+        .default_headers(headers);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::time::Duration;
+        builder = builder.connect_timeout(Duration::from_secs(500));
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        builder = builder;
+    }
+
+    builder.build().unwrap()
 });
 
 const GITHUB_API_URL: &str = "https://api.github.com";

@@ -1,0 +1,12 @@
+[package]
+name = "cli"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+github-contrib-stats = { path = ".." }
+anyhow.workspace = true
+tokio = { version = "1.28.1", features = ["full"] }
+clap = { version = "4.2.7", features = ["env"] }
+git-testament = "0.2.4"
+env_logger = "0.10.0"

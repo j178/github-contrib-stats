@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 github-contrib-stats = { path = ".." }
 anyhow.workspace = true
-tokio.workspace = true
+tokio = { version = "1.28.1", features = ["full"] }
 log = "0.4.17"
 url = "2.3.1"
 vercel_runtime = "0.3.4"
