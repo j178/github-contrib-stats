@@ -17,4 +17,4 @@ env_logger = "0.10.0"
 # Must set Root Directory to `vercel` in https://vercel.com/j178/github-contrib-stats/settings
 [[bin]]
 name = "vercel"
-path = "../api/vercel.rs"
+path = "api/vercel.rs"
