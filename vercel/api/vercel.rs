@@ -2,11 +2,10 @@ use std::collections::HashMap;
 
 use anyhow::anyhow;
 use log::info;
-use octocrab::OctocrabBuilder;
 use url::Url;
 use vercel_runtime::{run, Body, Error, Request, Response, StatusCode};
 
-use github_contrib_stats::{self as github, MarkdownRenderer, Render, SvgRenderer};
+use github_contrib_stats::{self as github, Render, SvgRenderer};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
