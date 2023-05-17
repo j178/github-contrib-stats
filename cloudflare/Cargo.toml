@@ -13,8 +13,3 @@ cfg-if = "1.0.0"
 console_error_panic_hook = { version = "0.1.7", optional = true }
 serde_json = "1.0.96"
 worker = "0.0.16"
-
-[profile.release]
-lto = true
-strip = true
-codegen-units = 1

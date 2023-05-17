@@ -14,6 +14,7 @@ env_logger = "0.10.0"
 
 # make the name of the binary match the `path.basename(entry_path, 'rs')`
 # https://github.com/vercel-community/rust/blob/main/src/lib/cargo.ts#L200
+# Must set Root Directory to `vercel` in https://vercel.com/j178/github-contrib-stats/settings
 [[bin]]
 name = "vercel"
 path = "../api/vercel.rs"

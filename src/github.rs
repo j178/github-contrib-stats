@@ -4,8 +4,8 @@ use std::ops::Deref;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use http::{HeaderMap, HeaderValue};
 use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
+use http::{HeaderMap, HeaderValue};
 use log::info;
 use once_cell::sync::Lazy;
 use reqwest::Client;
@@ -17,12 +17,17 @@ const PER_PAGE: u8 = 100;
 static CLIENT: Lazy<Client> = Lazy::new(|| {
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env var not found");
     let mut headers = HeaderMap::with_capacity(2);
-    headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github.v3+json"));
+    headers.insert(
+        ACCEPT,
+        HeaderValue::from_static("application/vnd.github.v3+json"),
+    );
     headers.insert(USER_AGENT, HeaderValue::from_static("github-contrib-stats"));
-    headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", &token)).unwrap());
+    headers.insert(
+        AUTHORIZATION,
+        HeaderValue::from_str(&format!("Bearer {}", &token)).unwrap(),
+    );
 
-    let mut builder = Client::builder()
-        .default_headers(headers);
+    let mut builder = Client::builder().default_headers(headers);
 
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -148,7 +153,6 @@ pub async fn get_created_repos(
 
     Ok(repos)
 }
-
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ContributedRepo {

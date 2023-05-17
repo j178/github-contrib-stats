@@ -13,6 +13,8 @@ async fn main() -> Result<(), Error> {
     env_logger::init();
 
     let h = |req: Request| async move {
+        info!("new request: {}", req.uri());
+
         let res = match req.uri().path() {
             "/created" => render_created_repos(req).await,
             "/contributed" => render_contributed_repos(req).await,
@@ -49,7 +51,6 @@ pub async fn render_created_repos(req: Request) -> Result<Response<Body>, Error>
 }
 
 pub async fn render_contributed_repos(req: Request) -> Result<Response<Body>, Error> {
-    info!("new request: {:?}", req.uri());
     let url = Url::parse(&req.uri().to_string()).unwrap();
     let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
     let username = query.get("username").ok_or(anyhow!("name not found"))?;
