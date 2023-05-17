@@ -1,3 +1,4 @@
 target/
 .vercel/
 .idea/
+cloudflare/worker/

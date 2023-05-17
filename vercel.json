@@ -3,5 +3,11 @@
     "api/*.rs": {
       "runtime": "vercel-rust@4.0.0-beta.4"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/:1"
+    }
+  ]
 }

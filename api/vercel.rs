@@ -14,7 +14,13 @@ async fn main() -> Result<(), Error> {
     env_logger::init();
 
     let h = |req: Request| async move {
-        let res = handler(req).await;
+        let res = match req.uri().path() {
+            "/created" => render_created_repos(req).await,
+            "/contributed" => render_contributed_repos(req).await,
+            _ => Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from("Not found"))?),
+        };
         match res {
             Ok(res) => Ok(res),
             Err(e) => Ok(Response::builder()
@@ -26,8 +32,7 @@ async fn main() -> Result<(), Error> {
     run(h).await
 }
 
-pub async fn handler(req: Request) -> Result<Response<Body>, Error> {
-    info!("new request: {:?}", req.uri());
+pub async fn render_created_repos(req: Request) -> Result<Response<Body>, Error> {
     let url = Url::parse(&req.uri().to_string()).unwrap();
     let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
     let username = query.get("username").ok_or(anyhow!("name not found"))?;
@@ -41,6 +46,28 @@ pub async fn handler(req: Request) -> Result<Response<Body>, Error> {
 
     let mut buf = String::new();
     SvgRenderer::new().render_created_repos(&mut buf, &repos);
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "text/markdown")
+        .body(buf.into())?)
+}
+
+pub async fn render_contributed_repos(req: Request) -> Result<Response<Body>, Error> {
+    info!("new request: {:?}", req.uri());
+    let url = Url::parse(&req.uri().to_string()).unwrap();
+    let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
+    let username = query.get("username").ok_or(anyhow!("name not found"))?;
+    let max_repos = query.get("max_repos").and_then(|x| x.parse::<usize>().ok());
+
+    let client = OctocrabBuilder::new()
+        .personal_token(std::env::var("GITHUB_TOKEN")?)
+        .build()?;
+
+    let repos = github::get_contributed_repos(&client, username, max_repos).await?;
+
+    let mut buf = String::new();
+    SvgRenderer::new().render_contributed_repos(&mut buf, &repos, username);
 
     Ok(Response::builder()
         .status(StatusCode::OK)

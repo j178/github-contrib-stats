@@ -3,8 +3,7 @@ use std::path::Path;
 use anyhow::{anyhow, bail, Result};
 use git_testament::git_testament;
 
-use github_contrib_stats::github;
-use github_contrib_stats::render::{MarkdownRenderer, Render};
+use github_contrib_stats::{self as github, MarkdownRenderer, Render};
 
 git_testament!(TESTAMENT);
 
@@ -24,14 +23,6 @@ async fn main() -> Result<()> {
                 .required(true),
         )
         .arg(
-            clap::Arg::new("token")
-                .short('t')
-                .long("token")
-                .env("GITHUB_TOKEN")
-                .help("GitHub personal access token")
-                .required(true),
-        )
-        .arg(
             clap::Arg::new("output")
                 .short('o')
                 .long("output")
@@ -48,12 +39,9 @@ async fn main() -> Result<()> {
 
     let username = matches.get_one::<String>("username").unwrap();
     let max_repos = matches.get_one::<usize>("max-repos").copied();
-    let client = octocrab::OctocrabBuilder::new()
-        .personal_token(matches.get_one::<String>("token").unwrap().clone())
-        .build()?;
 
-    let created_repos = github::get_created_repos(&client, username, max_repos).await?;
-    let contributed_repos = github::get_contributed_repos(&client, username, max_repos).await?;
+    let created_repos = github::get_created_repos(username, max_repos).await?;
+    let contributed_repos = github::get_contributed_repos(username, max_repos).await?;
 
     let output = matches.get_one::<String>("output").unwrap();
     if output.ends_with(".md") {
@@ -86,7 +74,7 @@ async fn main() -> Result<()> {
 
         std::fs::write(output, buf)?;
     } else if output.ends_with(".svg") {
-        todo!()
+        todo!("SVG output is not implemented yet")
     } else {
         bail!("Unknown output format: {}", output);
     }

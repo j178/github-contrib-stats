@@ -1,0 +1,20 @@
+name = "github-contrib-stats"
+type = "javascript"
+workers_dev = true
+compatibility_date = "2022-07-12"
+
+[vars]
+WORKERS_RS_VERSION = "0.0.9"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+cwd = "cloudflare"
+
+[build.upload]
+dir = "build/worker"
+format = "modules"
+main = "./shim.mjs"
+
+[[build.upload.rules]]
+globs = ["**/*.wasm"]
+type = "CompiledWasm"

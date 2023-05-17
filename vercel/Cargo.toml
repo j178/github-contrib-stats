@@ -1,0 +1,19 @@
+[package]
+name = "github-contrib-stats-vercel"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+github-contrib-stats = { path = ".." }
+anyhow.workspace = true
+tokio.workspace = true
+log = "0.4.17"
+url = "2.3.1"
+vercel_runtime = "0.3.4"
+env_logger = "0.10.0"
+
+# make the name of the binary match the `path.basename(entry_path, 'rs')`
+# https://github.com/vercel-community/rust/blob/main/src/lib/cargo.ts#L200
+[[bin]]
+name = "vercel"
+path = "../api/vercel.rs"

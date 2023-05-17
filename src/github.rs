@@ -1,33 +1,136 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::ops::Deref;
+use std::time::Duration;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
+use http::{HeaderMap, HeaderValue};
 use log::info;
-use octocrab::models::Repository;
-use octocrab::{Octocrab, Page};
-use serde::Deserialize;
+use once_cell::sync::Lazy;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 const PER_PAGE: u8 = 100;
 
+static CLIENT: Lazy<Client> = Lazy::new(|| {
+    let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env var not found");
+    let mut headers = HeaderMap::with_capacity(2);
+    headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github.v3+json"));
+    headers.insert(USER_AGENT, HeaderValue::from_static("github-contrib-stats"));
+    headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", &token)).unwrap());
+
+    Client::builder()
+        .default_headers(headers)
+        .connect_timeout(Duration::from_secs(500))
+        .build()
+        .unwrap()
+});
+
+const GITHUB_API_URL: &str = "https://api.github.com";
+const GRAPHQL_URL: &str = "https://api.github.com/graphql";
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct Repository {
+    pub name: String,
+    pub full_name: String,
+    pub html_url: String,
+    pub stargazers_count: u32,
+    pub forks_count: u32,
+    pub language: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub pushed_at: DateTime<Utc>,
+}
+
+struct HeaderLinks {
+    next: Option<String>,
+    #[allow(dead_code)]
+    last: Option<String>,
+    #[allow(dead_code)]
+    prev: Option<String>,
+    #[allow(dead_code)]
+    first: Option<String>,
+}
+
+fn parse_links(headers: &HeaderMap) -> Result<HeaderLinks> {
+    let mut first = None;
+    let mut prev = None;
+    let mut next = None;
+    let mut last = None;
+
+    if let Some(link) = headers.get("Link") {
+        let links = link.to_str()?;
+
+        for url_with_params in links.split(',') {
+            let mut url_and_params = url_with_params.split(';');
+            let url = url_and_params
+                .next()
+                .expect("url to be present")
+                .trim()
+                .trim_start_matches('<')
+                .trim_end_matches('>');
+
+            for param in url_and_params {
+                if let Some((name, value)) = param.trim().split_once('=') {
+                    let value = value.trim_matches('\"');
+
+                    if name == "rel" {
+                        match value {
+                            "first" => first = Some(url.into()),
+                            "prev" => prev = Some(url.into()),
+                            "next" => next = Some(url.into()),
+                            "last" => last = Some(url.into()),
+                            other => panic!("unexpected rel: {}", other),
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(HeaderLinks {
+        first,
+        prev,
+        next,
+        last,
+    })
+}
+
 pub async fn get_created_repos(
-    client: &Octocrab,
     username: &str,
     max_repos: Option<usize>,
 ) -> Result<Vec<Repository>> {
-    let page: Page<Repository> = client
-        .get(
-            format!("/users/{}/repos", username),
-            Some(&[("per_page", PER_PAGE.to_string())]),
-        )
-        .await?;
+    let resp = CLIENT
+        .deref()
+        .clone()
+        .get(format!("{GITHUB_API_URL}/users/{username}/repos"))
+        .query(&[("per_page", PER_PAGE)])
+        .send()
+        .await?
+        .error_for_status()?;
 
-    let repos: Vec<_> = client.all_pages(page).await?;
+    let mut links = parse_links(resp.headers())?;
+    let mut repos: Vec<Repository> = resp.json().await?;
+
+    while let Some(next) = links.next {
+        let resp = CLIENT
+            .deref()
+            .clone()
+            .get(next)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        links = parse_links(resp.headers())?;
+        let page: Vec<Repository> = resp.json().await?;
+        repos.extend(page);
+    }
 
     let mut repos: Vec<_> = repos
         .into_iter()
-        .filter(|repo| repo.stargazers_count.unwrap() > 0 || repo.forks_count.unwrap() > 0)
+        .filter(|repo| repo.stargazers_count > 0 || repo.forks_count > 0)
         .collect();
 
     repos.sort_by(|a, b| b.stargazers_count.cmp(&a.stargazers_count));
@@ -38,7 +141,8 @@ pub async fn get_created_repos(
     Ok(repos)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ContributedRepo {
     pub full_name: String,
     pub pr_count: u32,
@@ -48,17 +152,17 @@ pub struct ContributedRepo {
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct PageInfo {
+struct PageInfo {
     has_next_page: bool,
     end_cursor: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
-pub struct Edge {
-    pub node: PullRequest,
+struct Edge {
+    node: PullRequest,
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PullRequest {
     pub url: String,
@@ -67,21 +171,33 @@ pub struct PullRequest {
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct PullRequestSearchResult {
-    pub issue_count: u32,
-    pub page_info: PageInfo,
-    pub edges: Vec<Edge>,
+struct PullRequestSearchResult {
+    issue_count: u32,
+    page_info: PageInfo,
+    edges: Vec<Edge>,
 }
 
-async fn get_all_pages(client: &Octocrab, mut body: Value) -> Result<(u32, Vec<PullRequest>)> {
+async fn graphql_all_pages(mut body: Value) -> Result<(u32, Vec<PullRequest>)> {
     let mut all_prs = Vec::new();
     let mut has_next_page = true;
     let mut end_cursor = None;
     let mut total = 0;
 
+    // TODO maybe we can request concurrently
     while has_next_page {
         body["variables"]["cursor"] = json!(end_cursor);
-        let data: Value = client.post("/graphql", Some(&body)).await?;
+
+        let data: Value = CLIENT
+            .deref()
+            .clone()
+            .post(GRAPHQL_URL)
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
         let page: PullRequestSearchResult = serde_json::from_value(data["data"]["search"].clone())?;
         total = page.issue_count;
         has_next_page = page.page_info.has_next_page;
@@ -97,19 +213,7 @@ async fn get_all_pages(client: &Octocrab, mut body: Value) -> Result<(u32, Vec<P
     Ok((total, all_prs))
 }
 
-pub async fn get_contributed_repos(
-    client: &Octocrab,
-    username: &str,
-    max_repos: Option<usize>,
-) -> Result<Vec<ContributedRepo>> {
-    // https://docs.github.com/en/rest/search?apiVersion=2022-11-28
-    // For authenticated requests, you can make up to 30 requests per minute for all search endpoints except for the "Search code" endpoint.
-    // The "Search code" endpoint requires you to authenticate and limits you to 10 requests per minute.
-    // For unauthenticated requests, the rate limit allows you to make up to 10 requests per minute.
-
-    // search returns 1000 results max, regardless of the actual matches, use `created:<YYYY-MM-DD` to filter
-    // sort:created or sort:created-desc (default)
-    let query = r#"
+const QUERY_PRS: &str = "\
 query ($q: String!, $perPage: Int!, $cursor: String) {
   search(type: ISSUE, query: $q, first: $perPage, after: $cursor) {
     pageInfo {
@@ -126,21 +230,32 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
     }
     issueCount
   }
-}
-    "#;
+}";
+
+pub async fn get_contributed_repos(
+    username: &str,
+    max_repos: Option<usize>,
+) -> Result<Vec<ContributedRepo>> {
+    // https://docs.github.com/en/rest/search?apiVersion=2022-11-28
+    // For authenticated requests, you can make up to 30 requests per minute for all search endpoints except for the "Search code" endpoint.
+    // The "Search code" endpoint requires you to authenticate and limits you to 10 requests per minute.
+    // For unauthenticated requests, the rate limit allows you to make up to 10 requests per minute.
+
+    // search returns 1000 results max, regardless of the actual matches, use `created:<YYYY-MM-DD` to filter
+    // sort:created or sort:created-desc (default)
 
     let first_query =
         format!("author:{username} type:pr is:public sort:created-desc -user:{username}");
 
     let mut body = json!({
-        "query": query,
+        "query": QUERY_PRS,
         "variables": {
             "q": first_query,
             "perPage": PER_PAGE,
         }
     });
 
-    let (total_count, prs) = get_all_pages(client, body.clone()).await?;
+    let (total_count, prs) = graphql_all_pages(body.clone()).await?;
 
     let mut min_created_at = match prs.last() {
         Some(pr) => pr.created_at,
@@ -163,7 +278,7 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
             first_query,
             min_created_at.to_rfc3339()
         ));
-        let (_, prs) = get_all_pages(client, body.clone()).await?;
+        let (_, prs) = graphql_all_pages(body.clone()).await?;
         match prs.last() {
             Some(pr) => min_created_at = pr.created_at,
             None => break,

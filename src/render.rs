@@ -1,9 +1,8 @@
-use octocrab::models::Repository;
 use once_cell::sync::Lazy;
 use prettytable::format::TableFormat;
 use prettytable::{row, Table};
 
-use crate::github::ContributedRepo;
+use crate::github::{ContributedRepo, Repository};
 
 static MARKDOWN_TABLE: Lazy<TableFormat> = Lazy::new(|| {
     prettytable::format::FormatBuilder::new()
@@ -51,13 +50,13 @@ impl Render for MarkdownRenderer {
         for (id, repo) in repos.iter().enumerate() {
             table.add_row(row![
                 id + 1,
-                format!("[{}]({})", repo.name, repo.html_url.as_ref().unwrap()),
+                format!("[{}]({})", &repo.name, &repo.html_url),
                 repo.language
-                    .as_ref()
-                    .map_or("N/A".to_string(), |x| x.as_str().unwrap().to_string()),
-                repo.stargazers_count.unwrap(),
-                repo.forks_count.unwrap(),
-                repo.pushed_at.unwrap().format("%Y-%m-%d"),
+                    .as_deref()
+                    .unwrap_or("N/A"),
+                repo.stargazers_count,
+                repo.forks_count,
+                repo.pushed_at.format("%Y-%m-%d"),
             ]);
         }
         table.add_row(row![
@@ -66,9 +65,9 @@ impl Render for MarkdownRenderer {
             "",
             repos
                 .iter()
-                .map(|x| x.stargazers_count.unwrap())
+                .map(|x| x.stargazers_count)
                 .sum::<u32>(),
-            repos.iter().map(|x| x.forks_count.unwrap()).sum::<u32>(),
+            repos.iter().map(|x| x.forks_count).sum::<u32>(),
             "",
         ]);
 
