@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 const PER_PAGE: u8 = 100;
+const MAX_RESULTS: u32 = 1000;
 
 static CLIENT: Lazy<Client> = Lazy::new(|| {
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env var not found");
@@ -233,29 +234,32 @@ async fn graphql_one_page(
 
 async fn graphql_all_pages(body: Value, total: Option<u32>) -> Result<(u32, Vec<PullRequest>)> {
     let mut all_prs = Vec::new();
-    let mut total_all_query = 0u32;
-    let total_this_query;
-    let mut beginning = 0u32;
 
+    let total_all_query;
+    let mut beginning = 0u32;
     // total not known, fetch first page to get it
     if total.is_none() {
         let result = graphql_one_page(body.clone(), None).await?;
         total_all_query = result.issue_count;
-        total_this_query = 1000.min(total_all_query);
         all_prs.extend(result.edges.into_iter().map(|edge| edge.node));
-        beginning = all_prs.len() as u32;
+        beginning = PER_PAGE as u32;
     } else {
-        total_this_query = 1000.min(total.unwrap());
+        total_all_query = total.unwrap();
     }
+    let total_this_query = MAX_RESULTS.min(total_all_query);
 
     // has more pages
-    if all_prs.len() < total_this_query as usize {
+    if total_this_query > beginning {
+        all_prs.reserve((total_this_query - beginning) as usize);
+
         // cursor begins with base64("cursor:1")
         let futures = (beginning..total_this_query)
             .step_by(100)
-            .inspect(|cursor| info!("fetching PRs after cursor: {}", cursor))
-            .map(|cursor| BASE64_STANDARD.encode(format!("cursor:{cursor}")))
-            .map(|cursor| graphql_one_page(body.clone(), Some(cursor)))
+            .map(|cursor| {
+                info!("fetching PRs after cursor: {}", cursor);
+                let cursor = BASE64_STANDARD.encode(format!("cursor:{cursor}"));
+                graphql_one_page(body.clone(), Some(cursor))
+            })
             .collect::<Vec<_>>();
 
         let results = join_all(futures).await;
@@ -304,12 +308,12 @@ pub async fn get_contributed_repos(
     let mut all_prs = Vec::with_capacity(total_count as usize);
     all_prs.extend(prs);
 
-    while all_prs.len() < total_count as usize {
-        let remaining = total_count - all_prs.len() as u32;
+    let mut remaining_count = total_count - MAX_RESULTS;
+    while remaining_count > 0 {
         info!(
-            "total: {}, current: {}, min_created_at: {}",
+            "total: {}, remaining: {}, min_created_at: {}",
             total_count,
-            all_prs.len(),
+            remaining_count,
             min_created_at.to_rfc3339()
         );
 
@@ -318,12 +322,13 @@ pub async fn get_contributed_repos(
             first_query,
             min_created_at.to_rfc3339()
         ));
-        let (_, prs) = graphql_all_pages(body.clone(), Some(remaining)).await?;
+        let (_, prs) = graphql_all_pages(body.clone(), Some(remaining_count)).await?;
         match prs.last() {
             Some(pr) => min_created_at = pr.created_at,
             None => break,
         }
         all_prs.extend(prs);
+        remaining_count = remaining_count.saturating_sub(MAX_RESULTS);
     }
 
     // Group PRs by repo
