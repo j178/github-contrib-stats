@@ -3,10 +3,12 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use anyhow::Result;
+use base64::prelude::*;
 use chrono::{DateTime, Utc};
+use futures::future::join_all;
 use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use http::{HeaderMap, HeaderValue};
-use log::info;
+use log::{error, info};
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -189,42 +191,6 @@ struct PullRequestSearchResult {
     edges: Vec<Edge>,
 }
 
-async fn graphql_all_pages(mut body: Value) -> Result<(u32, Vec<PullRequest>)> {
-    let mut all_prs = Vec::new();
-    let mut has_next_page = true;
-    let mut end_cursor = None;
-    let mut total = 0;
-
-    // TODO maybe we can request concurrently
-    while has_next_page {
-        body["variables"]["cursor"] = json!(end_cursor);
-
-        let data: Value = CLIENT
-            .deref()
-            .clone()
-            .post(GRAPHQL_URL)
-            .json(&body)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
-
-        let page: PullRequestSearchResult = serde_json::from_value(data["data"]["search"].clone())?;
-        total = page.issue_count;
-        has_next_page = page.page_info.has_next_page;
-        end_cursor = page.page_info.end_cursor;
-        info!(
-            "batch: {}, cursor: {:?}",
-            page.edges.len(),
-            end_cursor.as_ref()
-        );
-        all_prs.extend(page.edges.into_iter().map(|x| x.node));
-    }
-
-    Ok((total, all_prs))
-}
-
 const QUERY_PRS: &str = "\
 query ($q: String!, $perPage: Int!, $cursor: String) {
   search(type: ISSUE, query: $q, first: $perPage, after: $cursor) {
@@ -243,6 +209,67 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
     issueCount
   }
 }";
+
+async fn graphql_one_page(
+    mut body: Value,
+    cursor: Option<String>,
+) -> Result<PullRequestSearchResult> {
+    body["variables"]["cursor"] = json!(cursor);
+
+    let data: Value = CLIENT
+        .deref()
+        .clone()
+        .post(GRAPHQL_URL)
+        .json(&body)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    let result: PullRequestSearchResult = serde_json::from_value(data["data"]["search"].clone())?;
+    Ok(result)
+}
+
+async fn graphql_all_pages(body: Value, total: Option<u32>) -> Result<(u32, Vec<PullRequest>)> {
+    let mut all_prs = Vec::new();
+    let mut total_all_query = 0u32;
+    let total_this_query;
+    let mut beginning = 0u32;
+
+    // total not known, fetch first page to get it
+    if total.is_none() {
+        let result = graphql_one_page(body.clone(), None).await?;
+        total_all_query = result.issue_count;
+        total_this_query = 1000.min(total_all_query);
+        all_prs.extend(result.edges.into_iter().map(|edge| edge.node));
+        beginning = all_prs.len() as u32;
+    } else {
+        total_this_query = 1000.min(total.unwrap());
+    }
+
+    // has more pages
+    if all_prs.len() < total_this_query as usize {
+        // cursor begins with base64("cursor:1")
+        let futures = (beginning..total_this_query)
+            .step_by(100)
+            .inspect(|cursor| info!("fetching PRs after cursor: {}", cursor))
+            .map(|cursor| BASE64_STANDARD.encode(format!("cursor:{cursor}")))
+            .map(|cursor| graphql_one_page(body.clone(), Some(cursor)))
+            .collect::<Vec<_>>();
+
+        let results = join_all(futures).await;
+        for result in results {
+            if let Ok(result) = result {
+                all_prs.extend(result.edges.into_iter().map(|edge| edge.node));
+            } else {
+                error!("failed to fetch a page of PRs")
+            }
+        }
+    }
+
+    Ok((total_all_query, all_prs))
+}
 
 pub async fn get_contributed_repos(
     username: &str,
@@ -267,7 +294,7 @@ pub async fn get_contributed_repos(
         }
     });
 
-    let (total_count, prs) = graphql_all_pages(body.clone()).await?;
+    let (total_count, prs) = graphql_all_pages(body.clone(), None).await?;
 
     let mut min_created_at = match prs.last() {
         Some(pr) => pr.created_at,
@@ -278,6 +305,7 @@ pub async fn get_contributed_repos(
     all_prs.extend(prs);
 
     while all_prs.len() < total_count as usize {
+        let remaining = total_count - all_prs.len() as u32;
         info!(
             "total: {}, current: {}, min_created_at: {}",
             total_count,
@@ -290,7 +318,7 @@ pub async fn get_contributed_repos(
             first_query,
             min_created_at.to_rfc3339()
         ));
-        let (_, prs) = graphql_all_pages(body.clone()).await?;
+        let (_, prs) = graphql_all_pages(body.clone(), Some(remaining)).await?;
         match prs.last() {
             Some(pr) => min_created_at = pr.created_at,
             None => break,
@@ -298,6 +326,7 @@ pub async fn get_contributed_repos(
         all_prs.extend(prs);
     }
 
+    // Group PRs by repo
     let groups = all_prs.into_iter().fold(HashMap::new(), |mut groups, pr| {
         let paths: Vec<_> = pr.url.split('/').collect();
         let repo_name = format!("{}/{}", paths[paths.len() - 4], paths[paths.len() - 3]);
@@ -306,6 +335,7 @@ pub async fn get_contributed_repos(
         groups
     });
 
+    // Transform groups into ContributedRepo
     let mut repos: Vec<_> = groups
         .into_iter()
         .map(|(repo_name, mut prs)| {

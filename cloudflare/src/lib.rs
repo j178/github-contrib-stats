@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use worker::{self, console_log, Context, Date, Env, Request, Response, Router};
 
-use github_contrib_stats::{self as github, Render, SvgRenderer};
+use github_contrib_stats::{github, Render, SvgRenderer};
 
 mod utils;
 
@@ -55,16 +55,21 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
                 .get("username")
                 .ok_or(anyhow!("name not found"))
                 .map_err(to_err)?;
-            let max_repos = query.get("max_repos").and_then(|x| x.parse::<usize>().ok());
+            let max_repos = query
+                .get("max_repos")
+                .map(|x| x.parse::<usize>())
+                .transpose()
+                .map_err(|_| worker::Error::RustError("max_repos is not an integer".into()))?;
 
             let repos = github::get_contributed_repos(&username, max_repos)
                 .await
                 .map_err(to_err)?;
+
             let mut buf = String::new();
             SvgRenderer::new().render_contributed_repos(&mut buf, &repos, username);
             Response::ok(buf)
         })
-        .get("/worker-version", |_, ctx| {
+        .get_async("/worker-version", |_, ctx| async move {
             let version = ctx.var("WORKERS_RS_VERSION")?.to_string();
             Response::ok(version)
         })

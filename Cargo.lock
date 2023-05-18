@@ -620,7 +620,9 @@ name = "github-contrib-stats"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.21.0",
  "chrono",
+ "futures",
  "http",
  "log",
  "once_cell",
