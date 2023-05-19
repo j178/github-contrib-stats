@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, bail, Result};
 use git_testament::git_testament;
+use tokio::join;
 
 use github_contrib_stats::{self as github, MarkdownRenderer, Render};
 
@@ -40,8 +41,11 @@ async fn main() -> Result<()> {
     let username = matches.get_one::<String>("username").unwrap();
     let max_repos = matches.get_one::<usize>("max-repos").copied();
 
-    let created_repos = github::get_created_repos(username, max_repos).await?;
-    let contributed_repos = github::get_contributed_repos(username, max_repos).await?;
+    let (created_repos, contributed_repos) = join!(
+        github::get_created_repos(&username, max_repos),
+        github::get_contributed_repos(&username, max_repos),
+    );
+    let (created_repos, contributed_repos) = (created_repos?, contributed_repos?);
 
     let output = matches.get_one::<String>("output").unwrap();
     if output.ends_with(".md") {

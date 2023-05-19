@@ -1,6 +1,5 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
-use std::ops::Deref;
 
 use anyhow::Result;
 use base64::prelude::*;
@@ -60,6 +59,7 @@ pub struct Repository {
     pub pushed_at: DateTime<Utc>,
 }
 
+#[derive(Default)]
 struct HeaderLinks {
     next: Option<String>,
     #[allow(dead_code)]
@@ -71,55 +71,49 @@ struct HeaderLinks {
 }
 
 fn parse_links(headers: &HeaderMap) -> Result<HeaderLinks> {
-    let mut first = None;
-    let mut prev = None;
-    let mut next = None;
-    let mut last = None;
+    let mut header_links = HeaderLinks::default();
+    let link = headers.get("Link");
+    if link.is_none() {
+        return Ok(header_links);
+    }
 
-    if let Some(link) = headers.get("Link") {
-        let links = link.to_str()?;
+    let links = link.unwrap().to_str()?;
+    for url_with_params in links.split(',') {
+        let mut url_and_params = url_with_params.split(';');
+        let url = url_and_params
+            .next()
+            .expect("url to be present")
+            .trim()
+            .trim_start_matches('<')
+            .trim_end_matches('>');
 
-        for url_with_params in links.split(',') {
-            let mut url_and_params = url_with_params.split(';');
-            let url = url_and_params
-                .next()
-                .expect("url to be present")
-                .trim()
-                .trim_start_matches('<')
-                .trim_end_matches('>');
+        for param in url_and_params {
+            if let Some((name, value)) = param.trim().split_once('=') {
+                let value = value.trim_matches('\"');
 
-            for param in url_and_params {
-                if let Some((name, value)) = param.trim().split_once('=') {
-                    let value = value.trim_matches('\"');
-
-                    if name == "rel" {
-                        match value {
-                            "first" => first = Some(url.into()),
-                            "prev" => prev = Some(url.into()),
-                            "next" => next = Some(url.into()),
-                            "last" => last = Some(url.into()),
-                            other => panic!("unexpected rel: {}", other),
-                        }
+                if name == "rel" {
+                    match value {
+                        "first" => header_links.first = Some(url.into()),
+                        "prev" => header_links.prev = Some(url.into()),
+                        "next" => header_links.next = Some(url.into()),
+                        "last" => header_links.last = Some(url.into()),
+                        other => panic!("unexpected rel: {}", other),
                     }
                 }
             }
         }
     }
 
-    Ok(HeaderLinks {
-        first,
-        prev,
-        next,
-        last,
-    })
+    Ok(header_links)
 }
 
 pub async fn get_created_repos(
     username: &str,
     max_repos: Option<usize>,
 ) -> Result<Vec<Repository>> {
+    info!("fetching created repos for {}", username);
+
     let resp = CLIENT
-        .deref()
         .clone()
         .get(format!("{GITHUB_API_URL}/users/{username}/repos"))
         .query(&[("per_page", PER_PAGE)])
@@ -131,13 +125,7 @@ pub async fn get_created_repos(
     let mut repos: Vec<Repository> = resp.json().await?;
 
     while let Some(next) = links.next {
-        let resp = CLIENT
-            .deref()
-            .clone()
-            .get(next)
-            .send()
-            .await?
-            .error_for_status()?;
+        let resp = CLIENT.clone().get(next).send().await?.error_for_status()?;
 
         links = parse_links(resp.headers())?;
         let page: Vec<Repository> = resp.json().await?;
@@ -218,7 +206,6 @@ async fn graphql_one_page(
     body["variables"]["cursor"] = json!(cursor);
 
     let data: Value = CLIENT
-        .deref()
         .clone()
         .post(GRAPHQL_URL)
         .json(&body)
@@ -286,6 +273,8 @@ pub async fn get_contributed_repos(
 
     // search returns 1000 results max, regardless of the actual matches, use `created:<YYYY-MM-DD` to filter
     // sort:created or sort:created-desc (default)
+
+    info!("fetching contributed repos for {}", username);
 
     let first_query =
         format!("author:{username} type:pr is:public sort:created-desc -user:{username}");
