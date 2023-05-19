@@ -146,7 +146,7 @@ pub async fn get_created_repos(
         info!("fetching Repos after {:?}", end_cursor);
         body["variables"]["after"] = json!(end_cursor);
 
-        let resp: Value = CLIENT
+        let mut resp: Value = CLIENT
             .clone()
             .post(GRAPHQL_URL)
             .json(&body)
@@ -157,7 +157,7 @@ pub async fn get_created_repos(
             .await?;
 
         let repo_result: RepositoryResult =
-            serde_json::from_value(resp["data"]["user"]["repositories"].clone())?;
+            serde_json::from_value(resp["data"]["user"]["repositories"].take())?;
 
         has_next_page = repo_result.page_info.has_next_page;
         end_cursor = repo_result.page_info.end_cursor;
@@ -194,12 +194,7 @@ struct PageInfo {
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
-struct Edge<T>
-where
-    T: DeserializeOwned,
-{
-    // https://github.com/serde-rs/serde/issues/1296
-    #[serde(bound = "")]
+struct Edge<T> {
     node: T,
 }
 
@@ -243,7 +238,7 @@ async fn get_one_page_of_pr(
 ) -> Result<PullRequestSearchResult> {
     body["variables"]["cursor"] = json!(cursor);
 
-    let data: Value = CLIENT
+    let mut data: Value = CLIENT
         .clone()
         .post(GRAPHQL_URL)
         .json(&body)
@@ -253,7 +248,7 @@ async fn get_one_page_of_pr(
         .json()
         .await?;
 
-    let result: PullRequestSearchResult = serde_json::from_value(data["data"]["search"].clone())?;
+    let result: PullRequestSearchResult = serde_json::from_value(data["data"]["search"].take())?;
     Ok(result)
 }
 
