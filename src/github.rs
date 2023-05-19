@@ -10,7 +10,6 @@ use http::{HeaderMap, HeaderValue};
 use log::{error, info};
 use once_cell::sync::Lazy;
 use reqwest::Client;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json::{json, Value};
 

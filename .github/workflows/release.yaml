@@ -24,4 +24,5 @@ jobs:
         uses: taiki-e/upload-rust-binary-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          manifest_path: ./cli/Cargo.toml
           bin: github-contrib-stats
