@@ -55,8 +55,8 @@ pub struct Repository {
     pub stargazers_count: u32,
     pub forks_count: u32,
     pub language: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub pushed_at: DateTime<Utc>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub pushed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Default)]

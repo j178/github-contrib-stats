@@ -54,7 +54,8 @@ impl Render for MarkdownRenderer {
                 repo.language.as_deref().unwrap_or("N/A"),
                 repo.stargazers_count,
                 repo.forks_count,
-                repo.pushed_at.format("%Y-%m-%d"),
+                repo.pushed_at
+                    .map_or("N/A".to_string(), |dt| dt.format("%Y-%m-%d").to_string()),
             ]);
         }
         table.add_row(row![
