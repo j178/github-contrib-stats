@@ -10,7 +10,8 @@ use http::{HeaderMap, HeaderValue};
 use log::{error, info};
 use once_cell::sync::Lazy;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use serde_json::{json, Value};
 
 const PER_PAGE: u8 = 100;
@@ -44,67 +45,83 @@ static CLIENT: Lazy<Client> = Lazy::new(|| {
     builder.build().unwrap()
 });
 
-const GITHUB_API_URL: &str = "https://api.github.com";
 const GRAPHQL_URL: &str = "https://api.github.com/graphql";
+const QUERY_REPOS: &str = "\
+query ($username: String!, $perPage: Int!, $after: String) {
+  user(login: $username) {
+    repositories(
+      ownerAffiliations: OWNER
+      isFork: false
+      first: $perPage
+      after: $after
+    ) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          nameWithOwner
+          stargazerCount
+          forkCount
+          primaryLanguage {
+            name
+          }
+          isArchived
+          createdAt
+          pushedAt
+        }
+      }
+    }
+  }
+}
+";
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+struct PrimaryLanguage {
+    name: String,
+}
+
+#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct Repository {
-    pub name: String,
-    pub full_name: String,
-    pub html_url: String,
-    pub stargazers_count: u32,
-    pub forks_count: u32,
-    pub language: Option<String>,
-    pub created_at: Option<DateTime<Utc>>,
+    pub name_with_owner: String,
+    pub stargazer_count: u32,
+    pub fork_count: u32,
+    primary_language: Option<PrimaryLanguage>,
+    pub is_archived: bool,
+    pub created_at: DateTime<Utc>,
     pub pushed_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Default)]
-struct HeaderLinks {
-    next: Option<String>,
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryResult {
     #[allow(dead_code)]
-    last: Option<String>,
-    #[allow(dead_code)]
-    prev: Option<String>,
-    #[allow(dead_code)]
-    first: Option<String>,
+    total_count: u32,
+    page_info: PageInfo,
+    edges: Vec<Edge<Repository>>,
 }
 
-fn parse_links(headers: &HeaderMap) -> Result<HeaderLinks> {
-    let mut header_links = HeaderLinks::default();
-    let link = headers.get("Link");
-    if link.is_none() {
-        return Ok(header_links);
+impl Repository {
+    pub fn name(&self) -> &str {
+        self.name_with_owner.split_once('/').unwrap().1
     }
 
-    let links = link.unwrap().to_str()?;
-    for url_with_params in links.split(',') {
-        let mut url_and_params = url_with_params.split(';');
-        let url = url_and_params
-            .next()
-            .expect("url to be present")
-            .trim()
-            .trim_start_matches('<')
-            .trim_end_matches('>');
-
-        for param in url_and_params {
-            if let Some((name, value)) = param.trim().split_once('=') {
-                let value = value.trim_matches('\"');
-
-                if name == "rel" {
-                    match value {
-                        "first" => header_links.first = Some(url.into()),
-                        "prev" => header_links.prev = Some(url.into()),
-                        "next" => header_links.next = Some(url.into()),
-                        "last" => header_links.last = Some(url.into()),
-                        other => panic!("unexpected rel: {}", other),
-                    }
-                }
-            }
-        }
+    pub fn owner(&self) -> &str {
+        self.name_with_owner.split_once('/').unwrap().0
     }
 
-    Ok(header_links)
+    pub fn html_url(&self) -> String {
+        format!("https://github.com/{}", self.name_with_owner)
+    }
+
+    pub fn language(&self) -> &str {
+        self.primary_language
+            .as_ref()
+            .map_or("N/A", |l| l.name.as_str())
+    }
 }
 
 pub async fn get_created_repos(
@@ -113,31 +130,47 @@ pub async fn get_created_repos(
 ) -> Result<Vec<Repository>> {
     info!("fetching created repos for {}", username);
 
-    let resp = CLIENT
-        .clone()
-        .get(format!("{GITHUB_API_URL}/users/{username}/repos"))
-        .query(&[("per_page", PER_PAGE)])
-        .send()
-        .await?
-        .error_for_status()?;
+    let mut body = json!({
+        "query": QUERY_REPOS,
+        "variables": {
+            "username": username,
+            "perPage": PER_PAGE,
+        }
+    });
 
-    let mut links = parse_links(resp.headers())?;
-    let mut repos: Vec<Repository> = resp.json().await?;
+    let mut has_next_page = true;
+    let mut end_cursor = None;
+    let mut repos = Vec::new();
 
-    while let Some(next) = links.next {
-        let resp = CLIENT.clone().get(next).send().await?.error_for_status()?;
+    while has_next_page {
+        info!("fetching Repos after {:?}", end_cursor);
+        body["variables"]["after"] = json!(end_cursor);
 
-        links = parse_links(resp.headers())?;
-        let page: Vec<Repository> = resp.json().await?;
-        repos.extend(page);
+        let resp: Value = CLIENT
+            .clone()
+            .post(GRAPHQL_URL)
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        let repo_result: RepositoryResult =
+            serde_json::from_value(resp["data"]["user"]["repositories"].clone())?;
+
+        has_next_page = repo_result.page_info.has_next_page;
+        end_cursor = repo_result.page_info.end_cursor;
+
+        repos.extend(repo_result.edges.into_iter().map(|edge| edge.node));
     }
 
     let mut repos: Vec<_> = repos
         .into_iter()
-        .filter(|repo| repo.stargazers_count > 0 || repo.forks_count > 0)
+        .filter(|repo| repo.stargazer_count > 0 || repo.fork_count > 0)
         .collect();
 
-    repos.sort_by(|a, b| b.stargazers_count.cmp(&a.stargazers_count));
+    repos.sort_by(|a, b| b.stargazer_count.cmp(&a.stargazer_count));
     if let Some(n) = max_repos {
         repos.truncate(n);
     }
@@ -161,8 +194,13 @@ struct PageInfo {
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
-struct Edge {
-    node: PullRequest,
+struct Edge<T>
+where
+    T: DeserializeOwned,
+{
+    // https://github.com/serde-rs/serde/issues/1296
+    #[serde(bound = "")]
+    node: T,
 }
 
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -177,7 +215,7 @@ pub struct PullRequest {
 struct PullRequestSearchResult {
     issue_count: u32,
     page_info: PageInfo,
-    edges: Vec<Edge>,
+    edges: Vec<Edge<PullRequest>>,
 }
 
 const QUERY_PRS: &str = "\
@@ -199,7 +237,7 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
   }
 }";
 
-async fn graphql_one_page(
+async fn get_one_page_of_pr(
     mut body: Value,
     cursor: Option<String>,
 ) -> Result<PullRequestSearchResult> {
@@ -219,14 +257,14 @@ async fn graphql_one_page(
     Ok(result)
 }
 
-async fn graphql_all_pages(body: Value, total: Option<u32>) -> Result<(u32, Vec<PullRequest>)> {
+async fn get_all_pages_of_pr(body: Value, total: Option<u32>) -> Result<(u32, Vec<PullRequest>)> {
     let mut all_prs = Vec::new();
 
     let total_all_query;
     let mut beginning = 0u32;
     // total not known, fetch first page to get it
     if total.is_none() {
-        let result = graphql_one_page(body.clone(), None).await?;
+        let result = get_one_page_of_pr(body.clone(), None).await?;
         total_all_query = result.issue_count;
         all_prs.extend(result.edges.into_iter().map(|edge| edge.node));
         beginning = PER_PAGE as u32;
@@ -245,7 +283,7 @@ async fn graphql_all_pages(body: Value, total: Option<u32>) -> Result<(u32, Vec<
             .map(|cursor| {
                 info!("fetching PRs after cursor: {}", cursor);
                 let cursor = BASE64_STANDARD.encode(format!("cursor:{cursor}"));
-                graphql_one_page(body.clone(), Some(cursor))
+                get_one_page_of_pr(body.clone(), Some(cursor))
             })
             .collect::<Vec<_>>();
 
@@ -287,7 +325,7 @@ pub async fn get_contributed_repos(
         }
     });
 
-    let (total_count, prs) = graphql_all_pages(body.clone(), None).await?;
+    let (total_count, prs) = get_all_pages_of_pr(body.clone(), None).await?;
 
     let mut min_created_at = match prs.last() {
         Some(pr) => pr.created_at,
@@ -311,7 +349,7 @@ pub async fn get_contributed_repos(
             first_query,
             min_created_at.to_rfc3339()
         ));
-        let (_, prs) = graphql_all_pages(body.clone(), Some(remaining_count)).await?;
+        let (_, prs) = get_all_pages_of_pr(body.clone(), Some(remaining_count)).await?;
         match prs.last() {
             Some(pr) => min_created_at = pr.created_at,
             None => break,

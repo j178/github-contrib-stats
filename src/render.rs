@@ -48,12 +48,13 @@ impl Render for MarkdownRenderer {
         ]);
 
         for (id, repo) in repos.iter().enumerate() {
+            let archived = if repo.is_archived { "~~" } else { "" };
             table.add_row(row![
                 id + 1,
-                format!("[{}]({})", &repo.name, &repo.html_url),
-                repo.language.as_deref().unwrap_or("N/A"),
-                repo.stargazers_count,
-                repo.forks_count,
+                format!("{archived}[{}]({}){archived}", repo.name(), repo.html_url()),
+                repo.language(),
+                repo.stargazer_count,
+                repo.fork_count,
                 repo.pushed_at
                     .map_or("N/A".to_string(), |dt| dt.format("%Y-%m-%d").to_string()),
             ]);
@@ -62,8 +63,8 @@ impl Render for MarkdownRenderer {
             "Total",
             "",
             "",
-            repos.iter().map(|x| x.stargazers_count).sum::<u32>(),
-            repos.iter().map(|x| x.forks_count).sum::<u32>(),
+            repos.iter().map(|x| x.stargazer_count).sum::<u32>(),
+            repos.iter().map(|x| x.fork_count).sum::<u32>(),
             "",
         ]);
 
