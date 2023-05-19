@@ -34,7 +34,7 @@ static CLIENT: Lazy<Client> = Lazy::new(|| {
     #[cfg(not(target_arch = "wasm32"))]
     {
         use std::time::Duration;
-        builder = builder.connect_timeout(Duration::from_secs(500));
+        builder = builder.connect_timeout(Duration::from_millis(500));
     }
     #[cfg(target_arch = "wasm32")]
     {
