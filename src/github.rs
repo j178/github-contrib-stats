@@ -316,6 +316,8 @@ pub async fn get_contributed_repos(
 
     // search returns 1000 results max, regardless of the actual matches, use `created:<YYYY-MM-DD` to filter
     // sort:created or sort:created-desc (default)
+    // https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
+    // -user:USERNAME to exclude PRs from repos owned by USERNAME itself
 
     info!("fetching contributed repos for {}", username);
 
