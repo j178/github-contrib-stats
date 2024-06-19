@@ -366,13 +366,14 @@ pub async fn get_contributed_repos(
     }
 
     // Group PRs by repo
-    let groups = all_prs.into_iter().fold(HashMap::new(), |mut groups, pr| {
-        let paths: Vec<_> = pr.url.split('/').collect();
-        let repo_name = format!("{}/{}", paths[paths.len() - 4], paths[paths.len() - 3]);
+    let groups: HashMap<String, Vec<_>> =
+        all_prs.into_iter().fold(HashMap::new(), |mut groups, pr| {
+            let paths: Vec<_> = pr.url.split('/').collect();
+            let repo_name = format!("{}/{}", paths[paths.len() - 4], paths[paths.len() - 3]);
 
-        groups.entry(repo_name).or_insert_with(Vec::new).push(pr);
-        groups
-    });
+            groups.entry(repo_name).or_default().push(pr);
+            groups
+        });
 
     // Transform groups into ContributedRepo
     let mut repos: Vec<_> = groups

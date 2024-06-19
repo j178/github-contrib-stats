@@ -26,6 +26,7 @@ pub trait Render {
     );
 }
 
+#[derive(Default)]
 pub struct MarkdownRenderer {}
 
 impl MarkdownRenderer {
@@ -119,6 +120,7 @@ impl Render for MarkdownRenderer {
     }
 }
 
+#[derive(Default)]
 pub struct SvgRenderer {}
 
 impl SvgRenderer {
