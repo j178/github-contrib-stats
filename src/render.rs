@@ -79,7 +79,9 @@ impl Render for MarkdownRenderer {
     ) {
         let mut table = Table::new();
         table.set_format(*MARKDOWN_TABLE);
-        table.set_titles(row!["No.", "Name", "First PR", "Last PR", "PR Count"]);
+        table.set_titles(row![
+            "No.", "Name", "Stars", "First PR", "Last PR", "PR Count"
+        ]);
 
         for (id, repo) in repos.iter().enumerate() {
             table.add_row(row![
@@ -88,6 +90,7 @@ impl Render for MarkdownRenderer {
                     "[{}](https://github.com/{})",
                     repo.full_name, repo.full_name
                 ),
+                format!("{}", repo.stargazer_count),
                 format!(
                     "[{}]({})",
                     repo.first_pr.created_at.format("%Y-%m-%d"),
@@ -106,6 +109,7 @@ impl Render for MarkdownRenderer {
         }
         table.add_row(row![
             "Total",
+            "",
             "",
             "",
             "",

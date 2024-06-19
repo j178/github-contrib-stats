@@ -180,6 +180,7 @@ pub async fn get_created_repos(
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ContributedRepo {
     pub full_name: String,
+    pub stargazer_count: u32,
     pub pr_count: u32,
     pub first_pr: PullRequest,
     pub last_pr: PullRequest,
@@ -199,9 +200,16 @@ struct Edge<T> {
 
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct RepositoryWithStargazerCount {
+    pub stargazer_count: u32,
+}
+
+#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct PullRequest {
     pub url: String,
     pub created_at: DateTime<Utc>,
+    pub repository: RepositoryWithStargazerCount,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
@@ -224,6 +232,9 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
         ... on PullRequest {
           url
           createdAt
+          repository {
+            stargazerCount
+          }
         }
       }
     }
@@ -370,6 +381,7 @@ pub async fn get_contributed_repos(
             let last_pr = prs.last().unwrap();
             ContributedRepo {
                 full_name: repo_name,
+                stargazer_count: last_pr.repository.stargazer_count,
                 pr_count: prs.len() as u32,
                 first_pr: first_pr.clone(),
                 last_pr: last_pr.clone(),
