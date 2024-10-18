@@ -2,6 +2,13 @@
 
 Generates a contribution summary for your GitHub profile. A Rust implementation of [yihong0618/github-readme-stats](https://github.com/yihong0618/github-readme-stats).
 
+## Visit online
+
+This service is deployed to Vercel, you can visit it in the browser to see your contribution stats:
+
+- Repos you created: `https://github-contrib-stats.vercel.app/created?username=<username>`
+- Repos you contributed: `https://github-contrib-stats.vercel.app/contributed?username=<username>`
+
 ## Use it in GitHub action
 
 ```yml
