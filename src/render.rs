@@ -225,7 +225,7 @@ impl SvgRenderer {
             .max()
             .unwrap_or(20);
         // Approximate width based on character count (assuming average char width is 8px)
-        (longest_name as i32 * 8).max(200).min(400)
+        (longest_name as i32 * 8).clamp(200, 400)
     }
 
     fn create_language_defs(&self, languages: &[&str]) -> Definitions {
@@ -345,16 +345,12 @@ impl Render for SvgRenderer {
             .set("height", total_height)
             .set("style", "background-color: white");
 
-        let languages = repos
-            .iter()
-            .map(|x| x.language())
-            .collect::<Vec<_>>();
+        let languages = repos.iter().map(|x| x.language()).collect::<Vec<_>>();
         // Add definitions with all language icons
         document = document.add(self.create_language_defs(&languages));
 
         // Title and date on the same line
-        document =
-            document.add(self.create_title(10, 30, &format!("Repos Created by {author}")));
+        document = document.add(self.create_title(10, 30, &format!("Repos Created by {author}")));
 
         let current_date = Local::now().format("%Y-%m-%d").to_string();
         document = document.add(
@@ -405,7 +401,7 @@ impl Render for SvgRenderer {
             document = document.add(self.create_link(
                 x,
                 y + row_height / 2,
-                &repo.name(),
+                repo.name(),
                 &repo.html_url(),
             ));
 
@@ -413,14 +409,14 @@ impl Render for SvgRenderer {
             x += col_widths[1];
             let text_x = x + 25;
             if let Some(lang_icon) =
-                self.create_language_icon(x, y + row_height / 2, &repo.language())
+                self.create_language_icon(x, y + row_height / 2, repo.language())
             {
                 document = document.add(lang_icon);
             }
             document = document.add(self.create_text(
                 text_x,
                 y + row_height / 2,
-                &repo.language(),
+                repo.language(),
                 &self.text_color,
             ));
 
@@ -512,7 +508,7 @@ impl Render for SvgRenderer {
             .max()
             .unwrap_or(20) as i32
             * 8;
-        let name_width = name_width.max(200).min(400);
+        let name_width = name_width.clamp(200, 400);
         let col_widths = [50, name_width, 80, 120, 120, 100];
         let row_height = 40;
         let header_height = 50;
@@ -525,11 +521,8 @@ impl Render for SvgRenderer {
             .set("style", "background-color: white; @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');");
 
         // Title and date on the same line
-        document = document.add(self.create_title(
-            10,
-            30,
-            &format!("Repos {author} Contributed To"),
-        ));
+        document =
+            document.add(self.create_title(10, 30, &format!("Repos {author} Contributed To")));
 
         let current_date = Local::now().format("%Y-%m-%d").to_string();
         document = document.add(
