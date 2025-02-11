@@ -186,7 +186,7 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 2rem auto;
             padding: 0 1rem;
             line-height: 1.5;
@@ -226,24 +226,44 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
         a:hover {{
             text-decoration: underline;
         }}
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }}
+        .stats-column {{
+            min-width: 0;
+        }}
+        @media (max-width: 768px) {{
+            .stats-grid {{
+                grid-template-columns: 1fr;
+            }}
+        }}
     </style>
 </head>
 <body>
     <h1>GitHub Stats for {}</h1>
-    <h2>Created Repositories</h2>
-    <div class="markdown-snippet">
-        ![Repos I created]({})
-    </div>
-    <div class="loading">
-        <img src="{}" alt="Created repositories stats">
-    </div>
-    
-    <h2>Contributed Repositories</h2>
-    <div class="markdown-snippet">
-        ![Repos I contributed to]({})
-    </div>
-    <div class="loading">
-        <img src="{}" alt="Contributed repositories stats">
+    <div class="stats-grid">
+        <div class="stats-column">
+            <h2>Created Repositories</h2>
+            <div class="markdown-snippet">
+                ![Repos I created]({})
+            </div>
+            <div class="loading">
+                <img src="{}" alt="Created repositories stats">
+            </div>
+        </div>
+        
+        <div class="stats-column">
+            <h2>Contributed Repositories</h2>
+            <div class="markdown-snippet">
+                ![Repos I contributed to]({})
+            </div>
+            <div class="loading">
+                <img src="{}" alt="Contributed repositories stats">
+            </div>
+        </div>
     </div>
     
     <p><a href="/">← Generate for another user</a></p>
