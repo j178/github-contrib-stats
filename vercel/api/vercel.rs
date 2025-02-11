@@ -166,7 +166,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         r#"<!DOCTYPE html>
 <html>
 <head>
-    <title>GitHub Stats for <a href="https://github.com/{}">{}</a></title>
+    <title>GitHub Stats for {username}</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -270,31 +270,30 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         </a>
     </div>
 
-    <h1>GitHub Stats for {}</h1>
+    <h1>GitHub Stats for <a href="https://github.com/{username}">{username}</a></h1>
     <div class="stats-grid">
         <div class="stats-column">
             <h2>Created Repositories</h2>
             <div class="markdown-snippet">
-                ![Repos I created]({})
+                ![Repos I created]({created_url})
             </div>
             <div class="loading">
-                <img src="{}" alt="Created repositories stats" onload="this.classList.add('loaded')">
+                <img src="{created_url}" alt="Created repositories stats" onload="this.classList.add('loaded')">
             </div>
         </div>
         
         <div class="stats-column">
             <h2>Contributed Repositories</h2>
             <div class="markdown-snippet">
-                ![Repos I contributed to]({})
+                ![Repos I contributed to]({contributed_url})
             </div>
             <div class="loading">
-                <img src="{}" alt="Contributed repositories stats" onload="this.classList.add('loaded')">
+                <img src="{contributed_url}" alt="Contributed repositories stats" onload="this.classList.add('loaded')">
             </div>
         </div>
     </div>
 </body>
-</html>"#,
-        username, username, username, created_url, created_url, contributed_url, contributed_url
+</html>"#
     );
 
     Ok(Response::builder()
