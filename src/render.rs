@@ -518,7 +518,7 @@ impl Render for SvgRenderer {
         let mut document = Document::new()
             .set("width", total_width)
             .set("height", total_height)
-            .set("style", "background-color: white; @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');");
+            .set("style", "background-color: white");
 
         // Title and date on the same line
         document =
