@@ -4,9 +4,9 @@ use anyhow::{anyhow, bail, Result};
 use git_testament::git_testament;
 use tokio::join;
 
+use github_contrib_stats::github::{ContributedRepo, Repository};
 use github_contrib_stats::render::SvgRenderer;
 use github_contrib_stats::{github, render::MarkdownRenderer, render::Render};
-use github_contrib_stats::github::{ContributedRepo, Repository};
 
 git_testament!(TESTAMENT);
 
@@ -72,7 +72,8 @@ async fn main() -> Result<()> {
                 // Scenario 2: Create new markdown file
                 let output = Path::new("github-contrib-stats.md");
                 let render = MarkdownRenderer::new();
-                let mut buf = String::from("# My GitHub Contribution Stats\n\n## Repos I Created\n\n");
+                let mut buf =
+                    String::from("# My GitHub Contribution Stats\n\n## Repos I Created\n\n");
                 render.render_created_repos(&mut buf, &created_repos, username);
                 buf.push_str("\n## Repos I've Contributed To\n\n");
                 render.render_contributed_repos(&mut buf, &contributed_repos, username);
@@ -84,7 +85,7 @@ async fn main() -> Result<()> {
                 let mut buf = String::new();
                 render.render_created_repos(&mut buf, &created_repos, username);
                 std::fs::write("created.svg", &buf)?;
-                
+
                 buf.clear();
                 render.render_contributed_repos(&mut buf, &contributed_repos, username);
                 std::fs::write("contributed.svg", buf)?;
@@ -96,11 +97,17 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn update_markdown(path: &Path, created_repos: Vec<Repository>, contributed_repos: Vec<ContributedRepo>, username: &str) -> Result<()> {
+fn update_markdown(
+    path: &Path,
+    created_repos: Vec<Repository>,
+    contributed_repos: Vec<ContributedRepo>,
+    username: &str,
+) -> Result<()> {
     let render = MarkdownRenderer::new();
     let mut buf;
     if !path.exists() {
-        buf = format!("# My GitHub Contribution Stats
+        buf = format!(
+            "# My GitHub Contribution Stats
 
 ## Repos Created by {username}
 
@@ -111,7 +118,8 @@ fn update_markdown(path: &Path, created_repos: Vec<Repository>, contributed_repo
 
 <!-- BEGIN:contributed -->
 <!-- END:contributed -->
-");
+"
+        );
     } else {
         buf = std::fs::read_to_string(path)?;
     }
