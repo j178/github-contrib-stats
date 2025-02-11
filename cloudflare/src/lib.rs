@@ -51,7 +51,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
                 .map_err(to_err)?;
 
             let mut buf = String::new();
-            SvgRenderer::new().render_created_repos(&mut buf, &repos);
+            SvgRenderer::new().render_created_repos(&mut buf, &repos, username);
             Response::ok(buf)
         })
         .get_async("/contributed", |req, _ctx| async move {
