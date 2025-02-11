@@ -46,7 +46,7 @@ pub async fn render_created_repos(req: Request) -> Result<Response<Body>, Error>
     let repos = github::get_created_repos(username, max_repos).await?;
 
     let mut buf = String::new();
-    SvgRenderer::new().render_created_repos(&mut buf, &repos);
+    SvgRenderer::new().render_created_repos(&mut buf, &repos, username);
 
     Ok(Response::builder()
         .status(StatusCode::OK)

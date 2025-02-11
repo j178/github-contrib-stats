@@ -4,6 +4,7 @@ use anyhow::{anyhow, bail, Result};
 use git_testament::git_testament;
 use tokio::join;
 
+use github_contrib_stats::render::SvgRenderer;
 use github_contrib_stats::{github, render::MarkdownRenderer, render::Render};
 
 git_testament!(TESTAMENT);
@@ -70,7 +71,7 @@ async fn main() -> Result<()> {
             buf = std::fs::read_to_string(output)?;
         }
         let mut part_buf = String::new();
-        render.render_created_repos(&mut part_buf, &created_repos);
+        render.render_created_repos(&mut part_buf, &created_repos, username);
         replace_template(&mut buf, "created_repos", &part_buf)?;
         part_buf.clear();
         render.render_contributed_repos(&mut part_buf, &contributed_repos, username);
@@ -78,7 +79,11 @@ async fn main() -> Result<()> {
 
         std::fs::write(output, buf)?;
     } else if output.ends_with(".svg") {
-        todo!("SVG output is not implemented yet")
+        let render = SvgRenderer::new();
+        let mut buf = String::new();
+        // render.render_contributed_repos(&mut buf, &contributed_repos, username);
+        render.render_created_repos(&mut buf, &created_repos, username);
+        std::fs::write(output, buf)?;
     } else {
         bail!("Unknown output format: {}", output);
     }
