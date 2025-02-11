@@ -9,7 +9,7 @@ anyhow.workspace = true
 tokio = { version = "1.28.1", features = ["full"] }
 log = "0.4.17"
 url = "2.3.1"
-vercel_runtime = "0.3.4"
+vercel_runtime = "1.0.0"
 env_logger = "0.11.0"
 
 # make the name of the binary match the `path.basename(entry_path, 'rs')`
