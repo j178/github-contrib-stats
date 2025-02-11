@@ -354,7 +354,7 @@ impl Render for SvgRenderer {
 
         // Title and date on the same line
         document =
-            document.add(self.create_title(10, 30, &format!("Repositories {author} Created")));
+            document.add(self.create_title(10, 30, &format!("Repos Created by {author}")));
 
         let current_date = Local::now().format("%Y-%m-%d").to_string();
         document = document.add(
@@ -528,7 +528,7 @@ impl Render for SvgRenderer {
         document = document.add(self.create_title(
             10,
             30,
-            &format!("Repositories {author} Contributed To"),
+            &format!("Repos {author} Contributed To"),
         ));
 
         let current_date = Local::now().format("%Y-%m-%d").to_string();
