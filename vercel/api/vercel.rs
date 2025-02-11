@@ -34,9 +34,14 @@ async fn main() -> Result<(), Error> {
 
 pub async fn render_created_repos(req: Request) -> Result<Response<Body>, Error> {
     let url = Url::parse(&req.uri().to_string()).unwrap();
-    let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
-    let username = query.get("username").ok_or(anyhow!("name not found"))?;
-    let max_repos = query.get("max_repos").and_then(|x| x.parse::<usize>().ok());
+    let query: HashMap<_, _> = url.query_pairs().collect();
+    let username = query
+        .get("username")
+        .ok_or_else(|| anyhow!("name not found"))?;
+    let max_repos = query
+        .get("max_repos")
+        .map(|x| x.parse::<usize>())
+        .transpose()?;
 
     let repos = github::get_created_repos(username, max_repos).await?;
 
@@ -51,10 +56,14 @@ pub async fn render_created_repos(req: Request) -> Result<Response<Body>, Error>
 
 pub async fn render_contributed_repos(req: Request) -> Result<Response<Body>, Error> {
     let url = Url::parse(&req.uri().to_string()).unwrap();
-    let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
-    let username = query.get("username").ok_or(anyhow!("name not found"))?;
-    let max_repos = query.get("max_repos").and_then(|x| x.parse::<usize>().ok());
-
+    let query: HashMap<_, _> = url.query_pairs().collect();
+    let username = query
+        .get("username")
+        .ok_or_else(|| anyhow!("name not found"))?;
+    let max_repos = query
+        .get("max_repos")
+        .map(|x| x.parse::<usize>())
+        .transpose()?;
     let repos = github::get_contributed_repos(username, max_repos).await?;
 
     let mut buf = String::new();

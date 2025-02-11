@@ -5,12 +5,13 @@ edition.workspace = true
 
 [dependencies]
 github-contrib-stats = { path = ".." }
+
 anyhow.workspace = true
-tokio = { version = "1.28.1", features = ["full"] }
-log = "0.4.17"
-url = "2.3.1"
+env_logger.workspace = true
+log.workspace = true
+tokio.workspace = true
+url.workspace = true
 vercel_runtime = "1.0.0"
-env_logger = "0.11.0"
 
 # make the name of the binary match the `path.basename(entry_path, 'rs')`
 # https://github.com/vercel-community/rust/blob/main/src/lib/cargo.ts#L200

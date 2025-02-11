@@ -672,12 +672,10 @@ dependencies = [
  "futures",
  "http",
  "log",
- "once_cell",
  "prettytable",
  "reqwest",
  "serde",
  "serde_json",
- "svg",
 ]
 
 [[package]]
@@ -685,10 +683,8 @@ name = "github-contrib-stats-cloudflare"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cfg-if",
  "console_error_panic_hook",
  "github-contrib-stats",
- "serde_json",
  "worker",
 ]
 
@@ -1842,12 +1838,6 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
-
-[[package]]
-name = "svg"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94afda9cd163c04f6bee8b4bf2501c91548deae308373c436f36aeff3cf3c4a3"
 
 [[package]]
 name = "syn"

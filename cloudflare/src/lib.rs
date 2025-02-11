@@ -36,7 +36,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
         .get("/", |_, _| Response::ok("Hello from Workers!"))
         .get_async("/created", |req, _ctx| async move {
             let url = req.url()?;
-            let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
+            let query: HashMap<_, _> = url.query_pairs().collect();
             let username = query
                 .get("username")
                 .ok_or_else(|| worker::Error::RustError("name not found".to_string()))?;
@@ -44,7 +44,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
                 .get("max_repos")
                 .map(|x| x.parse::<usize>())
                 .transpose()
-                .map_err(|_| worker::Error::RustError("max_repos is not an integer".into()))?;
+                .map_err(|_| worker::Error::RustError("max_repos is not an integer".to_string()))?;
 
             let repos = github::get_created_repos(username, max_repos)
                 .await
@@ -56,7 +56,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
         })
         .get_async("/contributed", |req, _ctx| async move {
             let url = req.url()?;
-            let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
+            let query: HashMap<_, _> = url.query_pairs().collect();
             let username = query
                 .get("username")
                 .ok_or_else(|| worker::Error::RustError("name not found".to_string()))?;

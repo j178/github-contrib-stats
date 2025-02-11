@@ -1,10 +1,11 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 use prettytable::format::TableFormat;
 use prettytable::{row, Table};
 
 use crate::github::{ContributedRepo, Repository};
 
-static MARKDOWN_TABLE: Lazy<TableFormat> = Lazy::new(|| {
+static MARKDOWN_TABLE: LazyLock<TableFormat> = LazyLock::new(|| {
     prettytable::format::FormatBuilder::new()
         .column_separator('|')
         .separator(

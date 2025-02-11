@@ -1,5 +1,6 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use anyhow::Result;
 use base64::prelude::*;
@@ -8,7 +9,6 @@ use futures::future::join_all;
 use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use http::{HeaderMap, HeaderValue};
 use log::{error, info};
-use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -16,7 +16,7 @@ use serde_json::{json, Value};
 const PER_PAGE: u8 = 100;
 const MAX_RESULTS: u32 = 1000;
 
-static CLIENT: Lazy<Client> = Lazy::new(|| {
+static CLIENT: LazyLock<Client> = LazyLock::new(|| {
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env var not found");
     let mut headers = HeaderMap::with_capacity(2);
     headers.insert(
