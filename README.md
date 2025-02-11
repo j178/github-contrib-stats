@@ -4,10 +4,7 @@ Generates a contribution summary for your GitHub profile. A Rust implementation 
 
 ## Visit online
 
-This service is deployed to Vercel, you can visit it in the browser to see your contribution stats:
-
-- Repos you created: `https://github-contrib-stats.vercel.app/created?username=<username>`
-- Repos you contributed: `https://github-contrib-stats.vercel.app/contributed?username=<username>`
+This service is deployed to Vercel, you can visit it in the browser to see your contribution stats: [https://github-contrib-stats.vercel.app](https://github-contrib-stats.vercel.app)
 
 ## Use it in GitHub action
 
