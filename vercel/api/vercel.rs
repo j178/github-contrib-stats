@@ -179,8 +179,7 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
         base_url, username, max_repos_param
     );
 
-    let result_html = format!(
-        r#"<!DOCTYPE html>
+    let result_html = format!(r#"<!DOCTYPE html>
 <html>
 <head>
     <title>GitHub Stats for {}</title>
@@ -204,6 +203,21 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
             max-width: 100%;
             height: auto;
             margin: 1rem 0;
+            min-height: 200px;
+            background: #f6f8fa;
+            border-radius: 6px;
+            display: block;
+        }}
+        .loading {{
+            position: relative;
+        }}
+        .loading::after {{
+            content: 'Loading...';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: #6a737d;
         }}
         a {{
             color: #0366d6;
@@ -220,18 +234,24 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
     <div class="markdown-snippet">
         ![Repos I created]({})
     </div>
-    <img src="{}" alt="Created repositories stats">
+    <div class="loading">
+        <img src="{}" alt="Created repositories stats">
+    </div>
     
     <h2>Contributed Repositories</h2>
     <div class="markdown-snippet">
         ![Repos I contributed to]({})
     </div>
-    <img src="{}" alt="Contributed repositories stats">
+    <div class="loading">
+        <img src="{}" alt="Contributed repositories stats">
+    </div>
     
     <p><a href="/">← Generate for another user</a></p>
 </body>
 </html>"#,
-        username, username, created_url, created_url, contributed_url, contributed_url
+        username, username,
+        created_url, created_url,
+        contributed_url, contributed_url
     );
 
     Ok(Response::builder()
