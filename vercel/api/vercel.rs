@@ -218,6 +218,11 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
             top: 50%;
             transform: translate(-50%, -50%);
             color: #6a737d;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }}
+        .loading img.loaded + .loading::after {{
+            opacity: 0;
         }}
         a {{
             color: #0366d6;
@@ -251,7 +256,7 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
                 ![Repos I created]({})
             </div>
             <div class="loading">
-                <img src="{}" alt="Created repositories stats">
+                <img src="{}" alt="Created repositories stats" onload="this.classList.add('loaded')">
             </div>
         </div>
         
@@ -261,7 +266,7 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
                 ![Repos I contributed to]({})
             </div>
             <div class="loading">
-                <img src="{}" alt="Contributed repositories stats">
+                <img src="{}" alt="Contributed repositories stats" onload="this.classList.add('loaded')">
             </div>
         </div>
     </div>
