@@ -17,8 +17,26 @@ async fn main() -> Result<(), Error> {
         let res = match (req.uri().path(), req.method()) {
             ("/", method) if method == "GET" => render_form(),
             ("/", method) if method == "POST" => handle_form_submit(req).await,
-            ("/created", _) => render_created_repos(req).await,
-            ("/contributed", _) => render_contributed_repos(req).await,
+            (path, method) if method == "GET" && path.ends_with("/created.svg") => {
+                let username = path
+                    .trim_end_matches("/created.svg")
+                    .trim_start_matches("/");
+                render_created_svg(username.to_string(), &req).await
+            }
+            (path, method) if method == "GET" && path.ends_with("/contributed.svg") => {
+                let username = path
+                    .trim_end_matches("/contributed.svg")
+                    .trim_start_matches("/");
+                render_contributed_svg(username.to_string(), &req).await
+            }
+            (path, method) if method == "GET" && path.starts_with("/") => {
+                let username = path.trim_start_matches("/");
+                if !username.is_empty() {
+                    render_stats_page(username.to_string(), &req).await
+                } else {
+                    render_form()
+                }
+            }
             _ => Ok(Response::builder()
                 .status(StatusCode::NOT_FOUND)
                 .body(Body::from("Not found"))?),
@@ -32,49 +50,6 @@ async fn main() -> Result<(), Error> {
     };
 
     run(h).await
-}
-
-pub async fn render_created_repos(req: Request) -> Result<Response<Body>, Error> {
-    let url = Url::parse(&req.uri().to_string()).unwrap();
-    let query: HashMap<_, _> = url.query_pairs().collect();
-    let username = query
-        .get("username")
-        .ok_or_else(|| anyhow!("name not found"))?;
-    let max_repos = query
-        .get("max_repos")
-        .map(|x| x.parse::<usize>())
-        .transpose()?;
-
-    let repos = github::get_created_repos(username, max_repos).await?;
-
-    let mut buf = String::new();
-    SvgRenderer::new().render_created_repos(&mut buf, &repos, username);
-
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "image/svg+xml")
-        .body(buf.into())?)
-}
-
-pub async fn render_contributed_repos(req: Request) -> Result<Response<Body>, Error> {
-    let url = Url::parse(&req.uri().to_string()).unwrap();
-    let query: HashMap<_, _> = url.query_pairs().collect();
-    let username = query
-        .get("username")
-        .ok_or_else(|| anyhow!("name not found"))?;
-    let max_repos = query
-        .get("max_repos")
-        .map(|x| x.parse::<usize>())
-        .transpose()?;
-    let repos = github::get_contributed_repos(username, max_repos).await?;
-
-    let mut buf = String::new();
-    SvgRenderer::new().render_contributed_repos(&mut buf, &repos, username);
-
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "image/svg+xml")
-        .body(buf.into())?)
 }
 
 fn render_form() -> Result<Response<Body>, Error> {
@@ -162,24 +137,33 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
     let max_repos = params
         .get("max_repos")
         .filter(|v| !v.is_empty())
-        .map(|v| v.to_string());
-
-    let base_url = "https://github-contrib-stats.vercel.app";
-    let max_repos_param = max_repos
-        .as_ref()
-        .map(|m| format!("&max_repos={}", m))
+        .map(|v| format!("?max_repos={}", v))
         .unwrap_or_default();
 
-    let created_url = format!(
-        "{}/created?username={}{}",
-        base_url, username, max_repos_param
-    );
+    // Redirect to /<username>?max_repos=X
+    Ok(Response::builder()
+        .status(StatusCode::FOUND)
+        .header("Location", format!("/{}{}", username, max_repos))
+        .body(Body::Empty)?)
+}
+
+async fn render_stats_page(username: String, req: &Request) -> Result<Response<Body>, Error> {
+    let url = Url::parse(&req.uri().to_string()).unwrap();
+    let query: HashMap<_, _> = url.query_pairs().collect();
+    let max_repos_param = query
+        .get("max_repos")
+        .map(|v| format!("?max_repos={}", v))
+        .unwrap_or_default();
+
+    let base_url = "https://github-contrib-stats.vercel.app";
+    let created_url = format!("{}/{}/created.svg{}", base_url, username, max_repos_param);
     let contributed_url = format!(
-        "{}/contributed?username={}{}",
+        "{}/{}/contributed.svg{}",
         base_url, username, max_repos_param
     );
 
-    let result_html = format!(r#"<!DOCTYPE html>
+    let result_html = format!(
+        r#"<!DOCTYPE html>
 <html>
 <head>
     <title>GitHub Stats for {}</title>
@@ -274,13 +258,49 @@ async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
     <p><a href="/">← Generate for another user</a></p>
 </body>
 </html>"#,
-        username, username,
-        created_url, created_url,
-        contributed_url, contributed_url
+        username, username, created_url, created_url, contributed_url, contributed_url
     );
 
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html")
         .body(Body::from(result_html))?)
+}
+
+async fn render_created_svg(username: String, req: &Request) -> Result<Response<Body>, Error> {
+    let url = Url::parse(&req.uri().to_string()).unwrap();
+    let query: HashMap<_, _> = url.query_pairs().collect();
+    let max_repos = query
+        .get("max_repos")
+        .map(|x| x.parse::<usize>())
+        .transpose()?;
+
+    let repos = github::get_created_repos(&username, max_repos).await?;
+
+    let mut buf = String::new();
+    SvgRenderer::new().render_created_repos(&mut buf, &repos, &username);
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "image/svg+xml")
+        .body(buf.into())?)
+}
+
+async fn render_contributed_svg(username: String, req: &Request) -> Result<Response<Body>, Error> {
+    let url = Url::parse(&req.uri().to_string()).unwrap();
+    let query: HashMap<_, _> = url.query_pairs().collect();
+    let max_repos = query
+        .get("max_repos")
+        .map(|x| x.parse::<usize>())
+        .transpose()?;
+
+    let repos = github::get_contributed_repos(&username, max_repos).await?;
+
+    let mut buf = String::new();
+    SvgRenderer::new().render_contributed_repos(&mut buf, &repos, &username);
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "image/svg+xml")
+        .body(buf.into())?)
 }
