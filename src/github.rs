@@ -342,7 +342,7 @@ pub async fn get_contributed_repos(
     let mut all_prs = Vec::with_capacity(total_count as usize);
     all_prs.extend(prs);
 
-    let mut remaining_count = total_count - MAX_RESULTS;
+    let mut remaining_count = total_count.saturating_sub(MAX_RESULTS);
     while remaining_count > 0 {
         info!(
             "total: {}, remaining: {}, min_created_at: {}",

@@ -5,7 +5,7 @@ use log::info;
 use url::Url;
 use vercel_runtime::{run, Body, Error, Request, Response, StatusCode};
 
-use github_contrib_stats::{self as github, Render, SvgRenderer};
+use github_contrib_stats::{github, render::Render, render::SvgRenderer};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

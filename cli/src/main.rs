@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail, Result};
 use git_testament::git_testament;
 use tokio::join;
 
-use github_contrib_stats::{self as github, MarkdownRenderer, Render};
+use github_contrib_stats::{github, render::MarkdownRenderer, render::Render};
 
 git_testament!(TESTAMENT);
 
@@ -42,8 +42,8 @@ async fn main() -> Result<()> {
     let max_repos = matches.get_one::<usize>("max-repos").copied();
 
     let (created_repos, contributed_repos) = join!(
-        github::get_created_repos(&username, max_repos),
-        github::get_contributed_repos(&username, max_repos),
+        github::get_created_repos(username, max_repos),
+        github::get_contributed_repos(username, max_repos),
     );
     let (created_repos, contributed_repos) = (created_repos?, contributed_repos?);
 

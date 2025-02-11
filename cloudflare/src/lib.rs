@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use anyhow::anyhow;
 use worker::{self, console_log, Context, Date, Env, Request, Response, Router};
 
-use github_contrib_stats::{github, Render, SvgRenderer};
+use github_contrib_stats::{github, render::Render, render::SvgRenderer};
 
 mod utils;
 
@@ -12,8 +11,12 @@ fn log_request(req: &Request) {
         "{} - [{}], located at: {:?}, within: {}",
         Date::now().to_string(),
         req.path(),
-        req.cf().coordinates().unwrap_or_default(),
-        req.cf().region().unwrap_or("unknown region".into())
+        req.cf()
+            .and_then(|cf| cf.coordinates())
+            .map_or_else(|| "unknown".to_string(), |coords| format!("{:?}", coords)),
+        req.cf()
+            .and_then(|cf| cf.region())
+            .unwrap_or_else(|| "unknown".to_string())
     );
 }
 
@@ -36,11 +39,14 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
             let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
             let username = query
                 .get("username")
-                .ok_or(anyhow!("name not found"))
-                .map_err(to_err)?;
-            let max_repos = query.get("max_repos").and_then(|x| x.parse::<usize>().ok());
+                .ok_or_else(|| worker::Error::RustError("name not found".to_string()))?;
+            let max_repos = query
+                .get("max_repos")
+                .map(|x| x.parse::<usize>())
+                .transpose()
+                .map_err(|_| worker::Error::RustError("max_repos is not an integer".into()))?;
 
-            let repos = github::get_created_repos(&username, max_repos)
+            let repos = github::get_created_repos(username, max_repos)
                 .await
                 .map_err(to_err)?;
 
@@ -53,15 +59,14 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
             let query: HashMap<String, String> = url.query_pairs().into_owned().collect();
             let username = query
                 .get("username")
-                .ok_or(anyhow!("name not found"))
-                .map_err(to_err)?;
+                .ok_or_else(|| worker::Error::RustError("name not found".to_string()))?;
             let max_repos = query
                 .get("max_repos")
                 .map(|x| x.parse::<usize>())
                 .transpose()
                 .map_err(|_| worker::Error::RustError("max_repos is not an integer".into()))?;
 
-            let repos = github::get_contributed_repos(&username, max_repos)
+            let repos = github::get_contributed_repos(username, max_repos)
                 .await
                 .map_err(to_err)?;
 
