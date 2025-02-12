@@ -229,7 +229,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             opacity: 1;
             transition: opacity 0.3s;
         }}
-        .loading img.loaded ~ .loading::after {{
+        .loading:has(img.loaded)::after {{
             opacity: 0;
             pointer-events: none;
         }}
