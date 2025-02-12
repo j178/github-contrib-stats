@@ -182,6 +182,30 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             border-radius: 6px;
             font-family: monospace;
             margin: 1rem 0;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.2s;
+        }}
+        .markdown-snippet:hover {{
+            background: #e1e4e8;
+        }}
+        .markdown-snippet::after {{
+            content: 'Click to copy';
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8rem;
+            color: #6a737d;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }}
+        .markdown-snippet:hover::after {{
+            opacity: 1;
+        }}
+        .markdown-snippet.copied::after {{
+            content: 'Copied!';
+            color: #28a745;
         }}
         img {{
             max-width: 100%;
@@ -257,7 +281,24 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
                 grid-template-columns: 1fr;
             }}
         }}
+        .markdown-label {{
+            font-size: 0.9rem;
+            color: #586069;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }}
     </style>
+    <script>
+        function copyMarkdown(element) {{
+            const text = element.textContent.trim();
+            navigator.clipboard.writeText(text).then(() => {{
+                element.classList.add('copied');
+                setTimeout(() => {{
+                    element.classList.remove('copied');
+                }}, 2000);
+            }});
+        }}
+    </script>
 </head>
 <body>
     <div class="top-buttons">
@@ -274,7 +315,8 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
     <div class="stats-grid">
         <div class="stats-column">
             <h2>Created Repositories</h2>
-            <div class="markdown-snippet">
+            <div class="markdown-label">📋 Markdown</div>
+            <div class="markdown-snippet" onclick="copyMarkdown(this)">
                 ![Repos I created]({created_url})
             </div>
             <div class="loading">
@@ -284,7 +326,8 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         
         <div class="stats-column">
             <h2>Contributed Repositories</h2>
-            <div class="markdown-snippet">
+            <div class="markdown-label">📋 Markdown</div>
+            <div class="markdown-snippet" onclick="copyMarkdown(this)">
                 ![Repos I contributed to]({contributed_url})
             </div>
             <div class="loading">
@@ -293,7 +336,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         </div>
     </div>
 </body>
-</html>"#
+</html>"#,
     );
 
     Ok(Response::builder()
