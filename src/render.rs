@@ -218,17 +218,6 @@ impl SvgRenderer {
         })
     }
 
-    // Helper to calculate name column width
-    fn calculate_name_width(&self, repos: &[Repository]) -> i32 {
-        let longest_name = repos
-            .iter()
-            .map(|repo| repo.name().len())
-            .max()
-            .unwrap_or(20);
-        // Approximate width based on character count (assuming average char width is 8px)
-        (longest_name as i32 * 8).clamp(200, 400)
-    }
-
     fn create_language_defs(&self, languages: &[&str]) -> Definitions {
         let mut defs = Definitions::new();
 
@@ -366,18 +355,25 @@ impl SvgRenderer {
 
 impl Render for SvgRenderer {
     fn render_created_repos(&self, output: &mut String, repos: &[Repository], author: &str) {
-        let name_width = self.calculate_name_width(repos);
+        // Approximate width based on character count (assuming average char width is 8px)
+        let name_width = repos
+            .iter()
+            .map(|repo| repo.name().len())
+            .max()
+            .unwrap_or(20) as i32
+            * 8;
+        let name_width = name_width.clamp(200, 400);
         let col_widths = [
             50,         // No.
             name_width, // Name
-            120,        // Language
+            140,        // Language
             120,        // Stars (including space for fire emoji)
             100,        // Forks
             120,        // Last Update
         ];
         let row_height = 40;
         let header_height = 50;
-        let total_width = col_widths.iter().sum::<i32>();
+        let total_width = col_widths.iter().sum();
         let total_height = header_height + (repos.len() as i32 + 2) * row_height;
 
         let mut document = Document::new()
