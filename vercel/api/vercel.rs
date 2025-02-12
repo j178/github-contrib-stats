@@ -185,22 +185,9 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             cursor: pointer;
             position: relative;
             transition: background-color 0.2s;
-            white-space: nowrap;
-            overflow-x: auto;
         }}
-        .markdown-snippet::-webkit-scrollbar {{
-            height: 8px;
-        }}
-        .markdown-snippet::-webkit-scrollbar-track {{
-            background: #f1f1f1;
-            border-radius: 4px;
-        }}
-        .markdown-snippet::-webkit-scrollbar-thumb {{
-            background: #c1c1c1;
-            border-radius: 4px;
-        }}
-        .markdown-snippet::-webkit-scrollbar-thumb:hover {{
-            background: #a8a8a8;
+        .markdown-snippet:hover {{
+            background: #e1e4e8;
         }}
         .markdown-snippet::after {{
             content: 'Click to copy';
