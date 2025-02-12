@@ -136,6 +136,7 @@ pub struct SvgRenderer {
     link_color: String,
     star_color: String,
     fork_color: String,
+    pr_color: String,
     total_row_bg: String,
     title_color: String,
 }
@@ -151,6 +152,7 @@ impl SvgRenderer {
             link_color: "#2563EB".to_string(),   // Bright blue for links
             star_color: "#EAB308".to_string(),   // Yellow for stars
             fork_color: "#10B981".to_string(),   // Emerald for forks
+            pr_color: "#2DA44E".to_string(),     // GitHub PR green
             total_row_bg: "#E2E8F0".to_string(), // Cool gray for total
             title_color: "#1E293B".to_string(),  // Dark slate for title
         }
@@ -246,10 +248,16 @@ impl SvgRenderer {
         defs
     }
 
-    fn create_number_with_effect(&self, x: i32, y: i32, number: u32, color: &str) -> Group {
-        // Calculate width based on number of digits (approximately 8px per digit)
+    fn create_number_with_effect(
+        &self,
+        x: i32,
+        y: i32,
+        number: u32,
+        color: &str,
+        is_star: bool,
+    ) -> Group {
         let num_str = number.to_string();
-        let num_width = (num_str.len() as i32 * 8) + 8; // Add some padding
+        let num_width = (num_str.len() as i32 * 8) + 8;
 
         let text = Text::new(num_str)
             .set("x", x)
@@ -261,9 +269,19 @@ impl SvgRenderer {
 
         let mut group = Group::new();
 
-        // Add effects based on number size
-        if number >= 1000 {
-            // Stronger glow effect for 1000+
+        // Add background effect based on number size
+        if number >= 10000 {
+            group = group.add(
+                Rectangle::new()
+                    .set("x", x - 4)
+                    .set("y", y - 10)
+                    .set("width", num_width)
+                    .set("height", 20)
+                    .set("fill", color)
+                    .set("opacity", 0.2)
+                    .set("rx", 10),
+            );
+        } else if number >= 1000 {
             group = group.add(
                 Rectangle::new()
                     .set("x", x - 4)
@@ -274,8 +292,7 @@ impl SvgRenderer {
                     .set("opacity", 0.15)
                     .set("rx", 10),
             );
-        } else if number >= 100 {
-            // Subtle glow effect for 100+
+        } else {
             group = group.add(
                 Rectangle::new()
                     .set("x", x - 4)
@@ -288,8 +305,25 @@ impl SvgRenderer {
             );
         }
 
-        // Add the text on top of the effect
-        group.add(text)
+        // Add the number text
+        group = group.add(text);
+
+        // Add fire emoji for star counts >= 10000, outside the background
+        if is_star && number >= 10000 {
+            group = group.add(
+                Text::new("🔥")
+                    .set("x", x + num_width + 2) // Position after the background
+                    .set("y", y)
+                    .set(
+                        "font-family",
+                        "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji",
+                    )
+                    .set("font-size", 14)
+                    .set("dominant-baseline", "middle"),
+            );
+        }
+
+        group
     }
 
     fn create_text(&self, x: i32, y: i32, content: &str, color: &str) -> Text {
@@ -334,7 +368,14 @@ impl SvgRenderer {
 impl Render for SvgRenderer {
     fn render_created_repos(&self, output: &mut String, repos: &[Repository], author: &str) {
         let name_width = self.calculate_name_width(repos);
-        let col_widths = [50, name_width, 120, 80, 80, 120];
+        let col_widths = [
+            50,         // No.
+            name_width, // Name
+            120,        // Language
+            120,        // Stars (including space for fire emoji)
+            100,        // Forks
+            120,        // Last Update
+        ];
         let row_height = 40;
         let header_height = 50;
         let total_width = col_widths.iter().sum::<i32>();
@@ -422,31 +463,23 @@ impl Render for SvgRenderer {
 
             // Stars
             x += col_widths[2];
-            if repo.stargazer_count > 0 {
-                document = document.add(self.create_number_with_effect(
-                    x,
-                    y + row_height / 2,
-                    repo.stargazer_count,
-                    &self.star_color,
-                ));
-            } else {
-                document =
-                    document.add(self.create_text(x, y + row_height / 2, "0", &self.text_color));
-            }
+            document = document.add(self.create_number_with_effect(
+                x,
+                y + row_height / 2,
+                repo.stargazer_count,
+                &self.star_color,
+                true,
+            ));
 
             // Forks
             x += col_widths[3];
-            if repo.fork_count > 0 {
-                document = document.add(self.create_number_with_effect(
-                    x,
-                    y + row_height / 2,
-                    repo.fork_count,
-                    &self.fork_color,
-                ));
-            } else {
-                document =
-                    document.add(self.create_text(x, y + row_height / 2, "0", &self.text_color));
-            }
+            document = document.add(self.create_number_with_effect(
+                x,
+                y + row_height / 2,
+                repo.fork_count,
+                &self.fork_color,
+                false,
+            ));
 
             // Last Update
             x += col_widths[4];
@@ -509,10 +542,17 @@ impl Render for SvgRenderer {
             .unwrap_or(20) as i32
             * 8;
         let name_width = name_width.clamp(200, 400);
-        let col_widths = [50, name_width, 80, 120, 120, 100];
+        let col_widths = [
+            50,         // No.
+            name_width, // Name
+            120,        // Stars
+            120,        // First PR
+            120,        // Last PR
+            100,        // PR Count
+        ];
         let row_height = 40;
         let header_height = 50;
-        let total_width = col_widths.iter().sum::<i32>();
+        let total_width = col_widths.iter().sum();
         let total_height = header_height + (repos.len() as i32 + 2) * row_height;
 
         let mut document = Document::new()
@@ -578,17 +618,13 @@ impl Render for SvgRenderer {
 
             // Stars
             x += col_widths[1];
-            if repo.stargazer_count > 0 {
-                document = document.add(self.create_number_with_effect(
-                    x,
-                    y + row_height / 2,
-                    repo.stargazer_count,
-                    &self.star_color,
-                ));
-            } else {
-                document =
-                    document.add(self.create_text(x, y + row_height / 2, "0", &self.text_color));
-            }
+            document = document.add(self.create_number_with_effect(
+                x,
+                y + row_height / 2,
+                repo.stargazer_count,
+                &self.star_color,
+                true,
+            ));
 
             // First PR
             x += col_widths[2];
@@ -610,15 +646,22 @@ impl Render for SvgRenderer {
 
             // PR Count
             x += col_widths[4];
-            document = document.add(self.create_link(
-                x,
-                y + row_height / 2,
-                &repo.pr_count.to_string(),
-                &format!(
-                    "https://github.com/{}/pulls?q=is%3Apr+author%3A{}",
-                    repo.full_name, author
-                ),
-            ));
+            let pr_link = format!(
+                "https://github.com/{}/pulls?q=is%3Apr+author%3A{}",
+                repo.full_name, author
+            );
+            document = document.add(
+                Anchor::new()
+                    .set("href", pr_link)
+                    .set("target", "_blank")
+                    .add(self.create_number_with_effect(
+                        x,
+                        y + row_height / 2,
+                        repo.pr_count,
+                        &self.pr_color,
+                        false,
+                    )),
+            );
 
             y += row_height;
         }
