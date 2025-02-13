@@ -1,6 +1,6 @@
 [package]
 name = "github-contrib-stats-cloudflare"
-version.workspace = true
+version = "0.0.0"
 edition.workspace = true
 
 [lib]

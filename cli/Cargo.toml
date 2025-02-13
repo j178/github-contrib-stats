@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-version.workspace = true
+version = "0.0.6"
 edition.workspace = true
 
 [dependencies]
