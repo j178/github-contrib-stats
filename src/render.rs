@@ -243,17 +243,21 @@ impl SvgRenderer {
         number: u32,
         color: &str,
         is_star: bool,
+        bold: bool,
     ) -> Group {
         let num_str = number.to_string();
         let num_width = (num_str.len() as i32 * 8) + 8;
 
-        let text = Text::new(num_str)
+        let mut text = Text::new(num_str)
             .set("x", x)
             .set("y", y)
             .set("fill", color)
             .set("font-family", self.font_family.as_str())
             .set("font-size", 14)
             .set("dominant-baseline", "middle");
+        if bold {
+            text = text.set("font-weight", "bold");
+        }
 
         let mut group = Group::new();
 
@@ -361,8 +365,9 @@ impl Render for SvgRenderer {
             .map(|repo| repo.name().len())
             .max()
             .unwrap_or(20) as i32
-            * 8;
-        let name_width = name_width.clamp(200, 400);
+            * 8
+            + 20; // Add some padding
+        let name_width = name_width.clamp(160, 400);
         let col_widths = [
             50,         // No.
             name_width, // Name
@@ -464,6 +469,7 @@ impl Render for SvgRenderer {
                 repo.stargazer_count,
                 &self.star_color,
                 true,
+                false,
             ));
 
             // Forks
@@ -473,6 +479,7 @@ impl Render for SvgRenderer {
                 y + row_height / 2,
                 repo.fork_count,
                 &self.fork_color,
+                false,
                 false,
             ));
 
@@ -500,26 +507,24 @@ impl Render for SvgRenderer {
         let total_forks: u32 = repos.iter().map(|x| x.fork_count).sum();
 
         let x_stars = 10 + col_widths[0] + col_widths[1] + col_widths[2];
-        document = document.add(
-            self.create_text(
-                x_stars,
-                y + row_height / 2,
-                &total_stars.to_string(),
-                &self.star_color,
-            )
-            .set("font-weight", "bold"),
-        );
+        document = document.add(self.create_number_with_effect(
+            x_stars,
+            y + row_height / 2,
+            total_stars,
+            &self.star_color,
+            true,
+            true,
+        ));
 
         let x_forks = x_stars + col_widths[3];
-        document = document.add(
-            self.create_text(
-                x_forks,
-                y + row_height / 2,
-                &total_forks.to_string(),
-                &self.fork_color,
-            )
-            .set("font-weight", "bold"),
-        );
+        document = document.add(self.create_number_with_effect(
+            x_forks,
+            y + row_height / 2,
+            total_forks,
+            &self.fork_color,
+            false,
+            true,
+        ));
 
         output.push_str(&document.to_string());
     }
@@ -535,8 +540,9 @@ impl Render for SvgRenderer {
             .map(|repo| repo.full_name.len())
             .max()
             .unwrap_or(20) as i32
-            * 8;
-        let name_width = name_width.clamp(200, 400);
+            * 8
+            + 20;
+        let name_width = name_width.clamp(160, 400);
         let col_widths = [
             50,         // No.
             name_width, // Name
@@ -619,6 +625,7 @@ impl Render for SvgRenderer {
                 repo.stargazer_count,
                 &self.star_color,
                 true,
+                false,
             ));
 
             // First PR
@@ -655,6 +662,7 @@ impl Render for SvgRenderer {
                         repo.pr_count,
                         &self.pr_color,
                         false,
+                        false,
                     )),
             );
 
@@ -673,15 +681,14 @@ impl Render for SvgRenderer {
         let total_prs: u32 = repos.iter().map(|x| x.pr_count).sum();
         let x_prs =
             10 + col_widths[0] + col_widths[1] + col_widths[2] + col_widths[3] + col_widths[4];
-        document = document.add(
-            self.create_text(
-                x_prs,
-                y + row_height / 2,
-                &total_prs.to_string(),
-                &self.pr_color,
-            )
-            .set("font-weight", "bold"),
-        );
+        document = document.add(self.create_number_with_effect(
+            x_prs,
+            y + row_height / 2,
+            total_prs,
+            &self.pr_color,
+            false,
+            true,
+        ));
 
         output.push_str(&document.to_string());
     }

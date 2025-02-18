@@ -123,7 +123,7 @@ fn render_form() -> Result<Response<Body>, Error> {
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .header("Content-Type", "text/html")
+        .header("Content-Type", "text/html; charset=utf-8")
         .body(Body::from(html))?)
 }
 
@@ -342,7 +342,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .header("Content-Type", "text/html")
+        .header("Content-Type", "text/html; charset=utf-8")
         .body(Body::from(result_html))?)
 }
 

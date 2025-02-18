@@ -6,7 +6,7 @@ Generates a contribution summary for your GitHub profile. A Rust implementation 
 
 This service is deployed to Vercel, you can visit it in the browser to see your contribution stats: [https://github-contrib-stats.vercel.app](https://github-contrib-stats.vercel.app)
 
-## Use it in GitHub action
+## Use it in GitHub Action
 
 ```yml
 name: Update README
@@ -30,7 +30,7 @@ jobs:
           fileName: "github-contrib-stats*.tar.gz"
           extract: true
       - name: Update stats
-        run: ./github-contrib-stats -u ${{ github.repository_owner }} -o README.md
+        run: ./github-contrib-stats -u ${{ github.repository_owner }} --update README.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit files
