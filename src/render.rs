@@ -469,10 +469,11 @@ impl Render for SvgRenderer {
             {
                 document = document.add(lang_icon);
             }
+            let truncated_lang = self.truncate_text(repo.language(), col_widths[2] - 30); // subtract icon space
             document = document.add(self.create_text(
                 text_x,
                 y + row_height / 2,
-                repo.language(),
+                &truncated_lang,
                 &self.text_color,
             ));
 
