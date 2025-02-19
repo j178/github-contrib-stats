@@ -155,12 +155,9 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         .map(|v| format!("?max_repos={}", v))
         .unwrap_or_default();
 
-    let base_url = "https://github-contrib-stats.vercel.app";
-    let created_url = format!("{}/{}/created.svg{}", base_url, username, max_repos_param);
-    let contributed_url = format!(
-        "{}/{}/contributed.svg{}",
-        base_url, username, max_repos_param
-    );
+    let origin = url.origin().ascii_serialization();
+    let created_url = format!("{}/{}/created.svg{}", origin, username, max_repos_param);
+    let contributed_url = format!("{}/{}/contributed.svg{}", origin, username, max_repos_param);
 
     let result_html = format!(
         r#"<!DOCTYPE html>

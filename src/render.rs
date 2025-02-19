@@ -361,8 +361,9 @@ impl SvgRenderer {
     }
 
     fn truncate_text(&self, text: &str, max_width: i32) -> String {
-        if text.len() * 8 > (max_width - 20) as usize {  // Approximate character width of 8px
-            let max_chars = (max_width - 40) as usize / 8;  // Leave room for "..."
+        if text.len() * 8 > (max_width - 20) as usize {
+            // Approximate character width of 8px
+            let max_chars = (max_width - 40) as usize / 8; // Leave room for "..."
             format!("{}...", &text[..max_chars])
         } else {
             text.to_string()
