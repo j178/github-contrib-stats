@@ -710,3 +710,124 @@ impl Render for SvgRenderer {
         output.push_str(&document.to_string());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::github::{
+        ContributedRepo, PrimaryLanguage, PullRequest, Repository, RepositoryWithStargazerCount,
+    };
+    use chrono::{TimeZone, Utc};
+    use std::fs;
+    use std::path::PathBuf;
+
+    fn create_test_repo(
+        name: &str,
+        language: &str,
+        stars: u32,
+        forks: u32,
+        archived: bool,
+    ) -> Repository {
+        Repository {
+            name_with_owner: format!("test-user/{}", name),
+            stargazer_count: stars,
+            fork_count: forks,
+            primary_language: Some(PrimaryLanguage {
+                name: language.to_string(),
+            }),
+            is_archived: archived,
+            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+            pushed_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap()),
+        }
+    }
+
+    fn create_test_contributed_repo(name: &str, stars: u32, prs: u32) -> ContributedRepo {
+        ContributedRepo {
+            full_name: name.to_string(),
+            stargazer_count: stars,
+            pr_count: prs,
+            first_pr: PullRequest {
+                url: "https://github.com/first".to_string(),
+                created_at: Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap(),
+                repository: RepositoryWithStargazerCount {
+                    stargazer_count: stars,
+                },
+            },
+            last_pr: PullRequest {
+                url: "https://github.com/last".to_string(),
+                created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+                repository: RepositoryWithStargazerCount {
+                    stargazer_count: stars,
+                },
+            },
+        }
+    }
+
+    #[test]
+    fn test_svg_render() {
+        let renderer = SvgRenderer::new();
+
+        // Test all languages and different star/fork counts
+        let repos = vec![
+            create_test_repo("repo-rust", "Rust", 10500, 500, false),
+            create_test_repo("repo-go", "Go", 5000, 300, false),
+            create_test_repo("repo-python", "Python", 1500, 200, false),
+            create_test_repo("repo-javascript", "JavaScript", 800, 100, false),
+            create_test_repo("repo-typescript", "TypeScript", 400, 50, false),
+            create_test_repo("repo-java", "Java", 200, 30, false),
+            create_test_repo("repo-c", "C", 100, 20, false),
+            create_test_repo("repo-cpp", "C++", 50, 10, false),
+            create_test_repo("repo-csharp", "C#", 25, 5, false),
+            create_test_repo("repo-ruby", "Ruby", 10, 2, false),
+            create_test_repo("repo-swift", "Swift", 5, 1, false),
+            create_test_repo("repo-kotlin", "Kotlin", 2, 0, false),
+            create_test_repo("repo-scala", "Scala", 1, 0, false),
+            create_test_repo("repo-r", "R", 0, 0, false),
+            create_test_repo("repo-perl", "Perl", 0, 0, true),
+            create_test_repo("repo-lua", "Lua", 0, 0, false),
+            create_test_repo("repo-zig", "Zig", 0, 0, false),
+            create_test_repo("repo-vue", "Vue", 0, 0, false),
+            create_test_repo("repo-dart", "Dart", 0, 0, false),
+            create_test_repo("repo-php", "PHP", 0, 0, false),
+            create_test_repo("repo-html", "HTML", 0, 0, false),
+        ];
+
+        let contributed_repos = vec![
+            create_test_contributed_repo("org/repo1", 10500, 100),
+            create_test_contributed_repo("org/repo2", 5000, 50),
+            create_test_contributed_repo("org/repo3", 1500, 25),
+            create_test_contributed_repo("org/repo4", 800, 10),
+            create_test_contributed_repo("org/repo5", 100, 5),
+            create_test_contributed_repo("org/repo6", 10, 1),
+        ];
+
+        // Create directory if it doesn't exist
+        let target_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("svg_test");
+        fs::create_dir_all(&target_dir).unwrap();
+
+        // Write created repos SVG
+        let mut created_output = String::new();
+        renderer.render_created_repos(&mut created_output, &repos, "test-user");
+        let created_path = target_dir.join("test_created.svg");
+        fs::write(&created_path, &created_output).unwrap();
+        println!("Created repos SVG written to: {}", created_path.display());
+
+        // Write contributed repos SVG
+        let mut contributed_output = String::new();
+        renderer.render_contributed_repos(&mut contributed_output, &contributed_repos, "test-user");
+        let contributed_path = target_dir.join("test_contributed.svg");
+        fs::write(&contributed_path, &contributed_output).unwrap();
+        println!(
+            "Contributed repos SVG written to: {}",
+            contributed_path.display()
+        );
+
+        // Basic validation
+        assert!(created_output.contains("<svg"));
+        assert!(created_output.contains("</svg>"));
+        assert!(contributed_output.contains("<svg"));
+        assert!(contributed_output.contains("</svg>"));
+    }
+}

@@ -78,8 +78,8 @@ query ($username: String!, $perPage: Int!, $after: String) {
 ";
 
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
-struct PrimaryLanguage {
-    name: String,
+pub struct PrimaryLanguage {
+    pub name: String,
 }
 
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -88,7 +88,7 @@ pub struct Repository {
     pub name_with_owner: String,
     pub stargazer_count: u32,
     pub fork_count: u32,
-    primary_language: Option<PrimaryLanguage>,
+    pub primary_language: Option<PrimaryLanguage>,
     pub is_archived: bool,
     pub created_at: DateTime<Utc>,
     pub pushed_at: Option<DateTime<Utc>>,
