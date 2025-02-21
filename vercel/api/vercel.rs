@@ -214,6 +214,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            position: relative;
         }}
         .svg-container svg {{
             width: 100%;
@@ -236,10 +237,6 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             color: #6a737d;
             opacity: 1;
             transition: opacity 0.3s;
-        }}
-        .loading svg + .loading::after {{
-            opacity: 0;
-            pointer-events: none;
         }}
         .top-buttons {{
             position: fixed;
@@ -304,7 +301,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
                 const svgText = await response.text();
                 const container = document.getElementById(containerId);
                 container.innerHTML = svgText;
-                container.classList.add('loaded');
+                container.classList.remove('loading');
             }} catch (error) {{
                 console.error('Error loading SVG:', error);
             }}
