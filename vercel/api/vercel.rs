@@ -215,10 +215,10 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         }}
         .svg-container {{
             width: 100%;
-            height: auto;
             margin: 1rem 0;
             background: #f6f8fa;
             border-radius: 6px;
+            min-height: 200px;
         }}
         .loading {{
             position: relative;
@@ -233,7 +233,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             opacity: 1;
             transition: opacity 0.3s;
         }}
-        .loading:has(object)::after {{
+        .loading:has(img.loaded)::after {{
             opacity: 0;
             pointer-events: none;
         }}
@@ -294,6 +294,23 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         }}
     </style>
     <script>
+        async function loadSVG(url, containerId) {{
+            try {{
+                const response = await fetch(url);
+                const svgText = await response.text();
+                const container = document.getElementById(containerId);
+                container.innerHTML = svgText;
+                container.classList.add('loaded');
+            }} catch (error) {{
+                console.error('Error loading SVG:', error);
+            }}
+        }}
+
+        window.onload = () => {{
+            loadSVG('{created_url}', 'created-svg');
+            loadSVG('{contributed_url}', 'contributed-svg');
+        }};
+
         function copyMarkdown(element) {{
             const text = element.textContent.trim();
             navigator.clipboard.writeText(text).then(() => {{
@@ -324,10 +341,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             <div class="markdown-snippet" onclick="copyMarkdown(this)">
                 ![Repos I created]({created_url})
             </div>
-            <div class="loading svg-container">
-                <object data="{created_url}" type="image/svg+xml">
-                    <img src="{created_url}" alt="Created repositories stats">
-                </object>
+            <div id="created-svg" class="svg-container loading">
             </div>
         </div>
         
@@ -337,10 +351,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             <div class="markdown-snippet" onclick="copyMarkdown(this)">
                 ![Repos I contributed to]({contributed_url})
             </div>
-            <div class="loading svg-container">
-                <object data="{contributed_url}" type="image/svg+xml">
-                    <img src="{contributed_url}" alt="Contributed repositories stats">
-                </object>
+            <div id="contributed-svg" class="svg-container loading">
             </div>
         </div>
     </div>
