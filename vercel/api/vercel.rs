@@ -204,21 +204,27 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             content: 'Copied!';
             color: #28a745;
         }}
-        object {{
-            max-width: 100%;
-            width: 100%;
-            height: 100%;
-            min-height: 300px;
-            background: #f6f8fa;
-            border-radius: 6px;
-            display: block;
-        }}
         .svg-container {{
             width: 100%;
             margin: 1rem 0;
             background: #f6f8fa;
             border-radius: 6px;
             min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }}
+        .svg-container svg {{
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
+            display: block;
+            preserveAspectRatio: xMidYMid meet;
+            viewBox: 0 0 800 400;
+        }}
+        object {{
+            display: none;
         }}
         .loading {{
             position: relative;
@@ -233,7 +239,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             opacity: 1;
             transition: opacity 0.3s;
         }}
-        .loading:has(img.loaded)::after {{
+        .loading svg + .loading::after {{
             opacity: 0;
             pointer-events: none;
         }}
