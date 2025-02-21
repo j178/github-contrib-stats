@@ -204,7 +204,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             content: 'Copied!';
             color: #28a745;
         }}
-        img {{
+        object {{
             max-width: 100%;
             height: auto;
             margin: 1rem 0;
@@ -226,7 +226,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             opacity: 1;
             transition: opacity 0.3s;
         }}
-        .loading:has(img.loaded)::after {{
+        .loading:has(object)::after {{
             opacity: 0;
             pointer-events: none;
         }}
@@ -318,7 +318,9 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
                 ![Repos I created]({created_url})
             </div>
             <div class="loading">
-                <img src="{created_url}" alt="Created repositories stats" onload="this.classList.add('loaded')">
+                <object data="{created_url}" type="image/svg+xml">
+                    <img src="{created_url}" alt="Created repositories stats">
+                </object>
             </div>
         </div>
         
@@ -329,7 +331,9 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
                 ![Repos I contributed to]({contributed_url})
             </div>
             <div class="loading">
-                <img src="{contributed_url}" alt="Contributed repositories stats" onload="this.classList.add('loaded')">
+                <object data="{contributed_url}" type="image/svg+xml">
+                    <img src="{contributed_url}" alt="Contributed repositories stats">
+                </object>
             </div>
         </div>
     </div>

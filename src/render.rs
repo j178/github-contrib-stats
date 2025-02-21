@@ -334,6 +334,8 @@ impl SvgRenderer {
 
     fn create_link(&self, x: i32, y: i32, text: &str, url: &str) -> Anchor {
         Anchor::new()
+            .set("href", url)
+            // Keep backward comaptibility
             .set("xlink:href", url)
             .set("target", "_blank")
             .add(self.create_text(x, y, text, &self.link_color))
