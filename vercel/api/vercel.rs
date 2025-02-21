@@ -220,8 +220,6 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             height: 100%;
             max-width: 800px;
             display: block;
-            preserveAspectRatio: xMidYMid meet;
-            viewBox: 0 0 800 400;
         }}
         object {{
             display: none;
