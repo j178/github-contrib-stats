@@ -206,12 +206,19 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         }}
         object {{
             max-width: 100%;
-            height: auto;
-            margin: 1rem 0;
-            min-height: 200px;
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
             background: #f6f8fa;
             border-radius: 6px;
             display: block;
+        }}
+        .svg-container {{
+            width: 100%;
+            height: auto;
+            margin: 1rem 0;
+            background: #f6f8fa;
+            border-radius: 6px;
         }}
         .loading {{
             position: relative;
@@ -317,7 +324,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             <div class="markdown-snippet" onclick="copyMarkdown(this)">
                 ![Repos I created]({created_url})
             </div>
-            <div class="loading">
+            <div class="loading svg-container">
                 <object data="{created_url}" type="image/svg+xml">
                     <img src="{created_url}" alt="Created repositories stats">
                 </object>
@@ -330,7 +337,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             <div class="markdown-snippet" onclick="copyMarkdown(this)">
                 ![Repos I contributed to]({contributed_url})
             </div>
-            <div class="loading">
+            <div class="loading svg-container">
                 <object data="{contributed_url}" type="image/svg+xml">
                     <img src="{contributed_url}" alt="Contributed repositories stats">
                 </object>
