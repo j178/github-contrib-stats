@@ -335,6 +335,8 @@ impl SvgRenderer {
     fn create_link(&self, x: i32, y: i32, text: &str, url: &str) -> Anchor {
         Anchor::new()
             .set("href", url)
+            // Keep backward comaptibility
+            .set("xlink:href", url)
             .set("target", "_blank")
             .add(self.create_text(x, y, text, &self.link_color))
     }
@@ -398,7 +400,11 @@ impl Render for SvgRenderer {
         let mut document = Document::new()
             .set("width", total_width)
             .set("height", total_height)
-            .set("style", "background-color: white");
+            .set("style", "background-color: white")
+            .set("xmlns", "http://www.w3.org/2000/svg")
+            .set("xmlns:xlink", "http://www.w3.org/1999/xlink")
+            .set("preserveAspectRatio", "xMidYMin meet")
+            .set("viewBox", "0 0 800 400");
 
         let languages = repos.iter().map(|x| x.language()).collect::<Vec<_>>();
         // Add definitions with all language icons
@@ -575,7 +581,11 @@ impl Render for SvgRenderer {
         let mut document = Document::new()
             .set("width", total_width)
             .set("height", total_height)
-            .set("style", "background-color: white");
+            .set("style", "background-color: white")
+            .set("xmlns", "http://www.w3.org/2000/svg")
+            .set("xmlns:xlink", "http://www.w3.org/1999/xlink")
+            .set("preserveAspectRatio", "xMidYMin meet")
+            .set("viewBox", "0 0 800 400");
 
         // Title and date on the same line
         document =

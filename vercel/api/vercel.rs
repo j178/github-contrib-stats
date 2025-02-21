@@ -204,14 +204,26 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             content: 'Copied!';
             color: #28a745;
         }}
-        img {{
-            max-width: 100%;
-            height: auto;
+        .svg-container {{
+            width: 100%;
             margin: 1rem 0;
-            min-height: 200px;
             background: #f6f8fa;
             border-radius: 6px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }}
+        .svg-container svg {{
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
             display: block;
+        }}
+        object {{
+            display: none;
         }}
         .loading {{
             position: relative;
@@ -225,10 +237,6 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             color: #6a737d;
             opacity: 1;
             transition: opacity 0.3s;
-        }}
-        .loading:has(img.loaded)::after {{
-            opacity: 0;
-            pointer-events: none;
         }}
         .top-buttons {{
             position: fixed;
@@ -287,6 +295,23 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         }}
     </style>
     <script>
+        async function loadSVG(url, containerId) {{
+            try {{
+                const response = await fetch(url);
+                const svgText = await response.text();
+                const container = document.getElementById(containerId);
+                container.innerHTML = svgText;
+                container.classList.remove('loading');
+            }} catch (error) {{
+                console.error('Error loading SVG:', error);
+            }}
+        }}
+
+        window.onload = () => {{
+            loadSVG('{created_url}', 'created-svg');
+            loadSVG('{contributed_url}', 'contributed-svg');
+        }};
+
         function copyMarkdown(element) {{
             const text = element.textContent.trim();
             navigator.clipboard.writeText(text).then(() => {{
@@ -317,8 +342,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             <div class="markdown-snippet" onclick="copyMarkdown(this)">
                 ![Repos I created]({created_url})
             </div>
-            <div class="loading">
-                <img src="{created_url}" alt="Created repositories stats" onload="this.classList.add('loaded')">
+            <div id="created-svg" class="svg-container loading">
             </div>
         </div>
         
@@ -328,8 +352,7 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
             <div class="markdown-snippet" onclick="copyMarkdown(this)">
                 ![Repos I contributed to]({contributed_url})
             </div>
-            <div class="loading">
-                <img src="{contributed_url}" alt="Contributed repositories stats" onload="this.classList.add('loaded')">
+            <div id="contributed-svg" class="svg-container loading">
             </div>
         </div>
     </div>
