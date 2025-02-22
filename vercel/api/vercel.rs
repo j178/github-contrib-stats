@@ -6,6 +6,7 @@ use url::Url;
 use vercel_runtime::{run, Body, Error, Request, Response, StatusCode};
 
 use github_contrib_stats::{github, render::Render, render::SvgRenderer};
+use redis::AsyncCommands;
 
 const FORM_TEMPLATE: &str = include_str!("form.html");
 const STATS_TEMPLATE: &str = include_str!("stats.html");
@@ -105,15 +106,64 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
         .body(Body::from(result_html))?)
 }
 
+async fn get_redis_client() -> Result<redis::Client, Error> {
+    let redis_url = std::env::var("KV_URL")?.replace("redis://", "rediss://");
+    redis::Client::open(redis_url)
+        .map_err(|e| anyhow::anyhow!("Failed to create Redis client: {}", e).into())
+}
+
+async fn get_cached_or_compute<T, F, Fut>(cache_key: &str, compute: F) -> Result<T, Error>
+where
+    T: serde::de::DeserializeOwned + serde::Serialize,
+    F: FnOnce() -> Fut,
+    Fut: std::future::Future<Output = Result<T, anyhow::Error>>,
+{
+    let redis_client = get_redis_client().await?;
+    let cached_result = async {
+        let mut redis_conn = redis_client.get_multiplexed_tokio_connection().await?;
+        let cached: Option<Vec<u8>> = redis_conn.get(cache_key).await?;
+
+        if let Some(cached_data) = cached {
+            bincode::deserialize(&cached_data)
+                .map_err(|e| anyhow::anyhow!("Failed to deserialize cache: {}", e))
+        } else {
+            Err(anyhow::anyhow!("Cache miss"))
+        }
+    }
+    .await;
+
+    match cached_result {
+        Ok(cached) => Ok(cached),
+        Err(e) => {
+            if !e.to_string().contains("Cache miss") {
+                return Err(e.into());
+            }
+
+            info!("Cache miss for key: {}", cache_key);
+            let value = compute().await?;
+
+            let cached_data = bincode::serialize(&value)?;
+            let mut redis_conn = redis_client.get_multiplexed_tokio_connection().await?;
+            let _: () = redis_conn.set_ex(cache_key, cached_data, 3600).await?;
+
+            Ok(value)
+        }
+    }
+}
+
 async fn render_created_svg(username: String, req: &Request) -> Result<Response<Body>, Error> {
-    let url = Url::parse(&req.uri().to_string()).unwrap();
+    let url = Url::parse(&req.uri().to_string())?;
     let query: HashMap<_, _> = url.query_pairs().collect();
     let max_repos = query
         .get("max_repos")
         .map(|x| x.parse::<usize>())
         .transpose()?;
 
-    let repos = github::get_created_repos(&username, max_repos).await?;
+    let cache_key = format!("created:{}:{:?}", username, max_repos);
+    let repos = get_cached_or_compute(&cache_key, || {
+        github::get_created_repos(&username, max_repos)
+    })
+    .await?;
 
     let mut buf = String::new();
     SvgRenderer::new().render_created_repos(&mut buf, &repos, &username);
@@ -125,14 +175,18 @@ async fn render_created_svg(username: String, req: &Request) -> Result<Response<
 }
 
 async fn render_contributed_svg(username: String, req: &Request) -> Result<Response<Body>, Error> {
-    let url = Url::parse(&req.uri().to_string()).unwrap();
+    let url = Url::parse(&req.uri().to_string())?;
     let query: HashMap<_, _> = url.query_pairs().collect();
     let max_repos = query
         .get("max_repos")
         .map(|x| x.parse::<usize>())
         .transpose()?;
 
-    let repos = github::get_contributed_repos(&username, max_repos).await?;
+    let cache_key = format!("contributed:{}:{:?}", username, max_repos);
+    let repos = get_cached_or_compute(&cache_key, || {
+        github::get_contributed_repos(&username, max_repos)
+    })
+    .await?;
 
     let mut buf = String::new();
     SvgRenderer::new().render_contributed_repos(&mut buf, &repos, &username);
