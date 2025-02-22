@@ -399,7 +399,7 @@ impl Render for SvgRenderer {
             .set("style", "background-color: white")
             .set("xmlns", "http://www.w3.org/2000/svg")
             .set("preserveAspectRatio", "xMidYMin meet")
-            .set("viewBox", format!("0 0 {total_height} {total_width}"));
+            .set("viewBox", format!("0 0 {total_width} {total_height}"));
 
         let languages = repos.iter().map(|x| x.language()).collect::<Vec<_>>();
         // Add definitions with all language icons
@@ -577,7 +577,7 @@ impl Render for SvgRenderer {
             .set("style", "background-color: white")
             .set("xmlns", "http://www.w3.org/2000/svg")
             .set("preserveAspectRatio", "xMidYMin meet")
-            .set("viewBox", format!("0 0 {total_height} {total_width}"));
+            .set("viewBox", format!("0 0 {total_width} {total_height}"));
 
         // Title and date on the same line
         document =
