@@ -107,6 +107,10 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
 }
 
 async fn get_redis_client() -> Result<redis::Client, Error> {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     let redis_url = std::env::var("KV_URL")?.replace("redis://", "rediss://");
     redis::Client::open(redis_url)
         .map_err(|e| anyhow::anyhow!("Failed to create Redis client: {}", e).into())
