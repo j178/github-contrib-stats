@@ -119,34 +119,42 @@ where
     Fut: std::future::Future<Output = Result<T, anyhow::Error>>,
 {
     let redis_client = get_redis_client().await?;
-    let cached_result = async {
-        let mut redis_conn = redis_client.get_multiplexed_tokio_connection().await?;
-        let cached: Option<Vec<u8>> = redis_conn.get(cache_key).await?;
-
-        if let Some(cached_data) = cached {
-            bincode::deserialize(&cached_data)
-                .map_err(|e| anyhow::anyhow!("Failed to deserialize cache: {}", e))
-        } else {
-            Err(anyhow::anyhow!("Cache miss"))
-        }
-    }
-    .await;
-
-    match cached_result {
-        Ok(cached) => Ok(cached),
+    let mut conn = match redis_client.get_multiplexed_tokio_connection().await {
+        Ok(conn) => conn,
         Err(e) => {
-            if !e.to_string().contains("Cache miss") {
-                return Err(e.into());
-            }
+            info!("Failed to connect to Redis: {}", e);
+            return compute().await.map_err(Error::from);
+        }
+    };
 
+    // Try to get from cache first
+    match conn.get::<_, Option<Vec<u8>>>(cache_key).await {
+        Ok(Some(cached_data)) => match bincode::deserialize(&cached_data) {
+            Ok(value) => Ok(value),
+            Err(e) => {
+                info!("Failed to deserialize cache: {}", e);
+                compute().await.map_err(Error::from)
+            }
+        },
+        Ok(None) => {
             info!("Cache miss for key: {}", cache_key);
             let value = compute().await?;
 
-            let cached_data = bincode::serialize(&value)?;
-            let mut redis_conn = redis_client.get_multiplexed_tokio_connection().await?;
-            let _: () = redis_conn.set_ex(cache_key, cached_data, 3600).await?;
+            // Store in cache
+            if let Ok(cached_data) = bincode::serialize(&value) {
+                if let Err(e) = conn
+                    .set_ex::<_, _, ()>(cache_key, cached_data, 2 * 3600)
+                    .await
+                {
+                    info!("Failed to store in cache: {}", e);
+                }
+            }
 
             Ok(value)
+        }
+        Err(e) => {
+            info!("Failed to get from cache: {}", e);
+            compute().await.map_err(Error::from)
         }
     }
 }
