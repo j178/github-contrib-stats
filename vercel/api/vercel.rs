@@ -7,7 +7,6 @@ use url::Url;
 use vercel_runtime::{Body, Error, Request, Response, StatusCode, run};
 
 use github_contrib_stats::{github, render::Render, render::SvgRenderer};
-use redis::AsyncCommands;
 
 const FORM_TEMPLATE: &str = include_str!("form.html");
 const STATS_TEMPLATE: &str = include_str!("stats.html");
