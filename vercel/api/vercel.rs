@@ -129,7 +129,10 @@ where
     // Try to get from cache first
     match conn.get::<_, Option<Vec<u8>>>(cache_key).await {
         Ok(Some(cached_data)) => match bincode::deserialize(&cached_data) {
-            Ok(value) => Ok(value),
+            Ok(value) => {
+                info!("Cache hit for key: {}", cache_key);
+                Ok(value)
+            }
             Err(e) => {
                 info!("Failed to deserialize cache: {}", e);
                 compute().await.map_err(Error::from)
@@ -142,7 +145,7 @@ where
             // Store in cache
             if let Ok(cached_data) = bincode::serialize(&value) {
                 if let Err(e) = conn
-                    .set_ex::<_, _, ()>(cache_key, cached_data, 2 * 3600)
+                    .set_ex::<_, _, ()>(cache_key, cached_data, 12 * 3600)
                     .await
                 {
                     info!("Failed to store in cache: {}", e);
@@ -178,7 +181,10 @@ async fn render_created_svg(username: String, req: &Request) -> Result<Response<
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "image/svg+xml")
-        .header("Cache-Control", "public, max-age=3600")
+        .header(
+            "Cache-Control",
+            "public, max-age=7200, s-maxage=7200, stale-while-revalidate=86400",
+        )
         .header("ETag", format!("\"{}\"", username))
         .body(buf.into())?)
 }
@@ -203,7 +209,10 @@ async fn render_contributed_svg(username: String, req: &Request) -> Result<Respo
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "image/svg+xml")
-        .header("Cache-Control", "public, max-age=3600")
+        .header(
+            "Cache-Control",
+            "public, max-age=7200, s-maxage=7200, stale-while-revalidate=86400",
+        )
         .header("ETag", format!("\"{}\"", username))
         .body(buf.into())?)
 }
