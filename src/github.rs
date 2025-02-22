@@ -11,7 +11,7 @@ use http::{HeaderMap, HeaderValue};
 use log::{error, info};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const PER_PAGE: u8 = 100;
 const MAX_RESULTS: u32 = 1000;

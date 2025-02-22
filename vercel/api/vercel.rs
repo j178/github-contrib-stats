@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use anyhow::anyhow;
 use log::info;
+use redis::AsyncCommands;
 use url::Url;
-use vercel_runtime::{run, Body, Error, Request, Response, StatusCode};
+use vercel_runtime::{Body, Error, Request, Response, StatusCode, run};
 
 use github_contrib_stats::{github, render::Render, render::SvgRenderer};
 use redis::AsyncCommands;
@@ -112,11 +113,10 @@ async fn get_redis_client() -> Result<redis::Client, Error> {
         .map_err(|e| anyhow::anyhow!("Failed to create Redis client: {}", e).into())
 }
 
-async fn get_cached_or_compute<T, F, Fut>(cache_key: &str, compute: F) -> Result<T, Error>
+async fn get_cached_or_compute<T, F>(cache_key: &str, compute: F) -> Result<T, Error>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
-    F: FnOnce() -> Fut,
-    Fut: std::future::Future<Output = Result<T, anyhow::Error>>,
+    F: AsyncFnOnce() -> Result<T, anyhow::Error>,
 {
     let redis_client = get_redis_client().await?;
     let mut conn = match redis_client.get_multiplexed_tokio_connection().await {

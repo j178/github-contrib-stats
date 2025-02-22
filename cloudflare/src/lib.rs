@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use worker::{self, console_log, Context, Date, Env, Request, Response, Router};
+use worker::{self, Context, Date, Env, Request, Response, Router, console_log};
 
 use github_contrib_stats::{github, render::Render, render::SvgRenderer};
 
