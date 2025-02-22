@@ -10,7 +10,7 @@ use http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use http::{HeaderMap, HeaderValue};
 use log::{error, info};
 use reqwest::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 const PER_PAGE: u8 = 100;
@@ -77,12 +77,12 @@ query ($username: String!, $perPage: Int!, $after: String) {
 }
 ";
 
-#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct PrimaryLanguage {
     pub name: String,
 }
 
-#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Repository {
     pub name_with_owner: String,
@@ -177,7 +177,7 @@ pub async fn get_created_repos(
     Ok(repos)
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct ContributedRepo {
     pub full_name: String,
     pub stargazer_count: u32,
@@ -198,13 +198,13 @@ struct Edge<T> {
     node: T,
 }
 
-#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RepositoryWithStargazerCount {
     pub stargazer_count: u32,
 }
 
-#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PullRequest {
     pub url: String,
