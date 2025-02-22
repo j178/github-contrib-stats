@@ -121,6 +121,8 @@ async fn render_created_svg(username: String, req: &Request) -> Result<Response<
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "image/svg+xml")
+        .header("Cache-Control", "public, max-age=3600")
+        .header("ETag", format!("\"{}\"", username))
         .body(buf.into())?)
 }
 
@@ -140,5 +142,7 @@ async fn render_contributed_svg(username: String, req: &Request) -> Result<Respo
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "image/svg+xml")
+        .header("Cache-Control", "public, max-age=3600")
+        .header("ETag", format!("\"{}\"", username))
         .body(buf.into())?)
 }
