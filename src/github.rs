@@ -127,7 +127,7 @@ pub async fn get_created_repos(
     username: &str,
     max_repos: Option<usize>,
 ) -> Result<Vec<Repository>> {
-    info!("fetching created repos for {}", username);
+    info!("Fetching created repos for {}", username);
 
     let mut body = json!({
         "query": QUERY_REPOS,
@@ -142,7 +142,7 @@ pub async fn get_created_repos(
     let mut repos = Vec::new();
 
     while has_next_page {
-        info!("fetching Repos after {:?}", end_cursor);
+        info!("Fetching repos after {:?}", end_cursor);
         body["variables"]["after"] = json!(end_cursor);
 
         let mut resp: Value = CLIENT
@@ -319,7 +319,7 @@ pub async fn get_contributed_repos(
     // https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
     // -user:USERNAME to exclude PRs from repos owned by USERNAME itself
 
-    info!("fetching contributed repos for {}", username);
+    info!("Fetching contributed repos for {}", username);
 
     let first_query =
         format!("author:{username} type:pr is:public sort:created-desc -user:{username}");

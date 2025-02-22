@@ -7,6 +7,9 @@ use vercel_runtime::{run, Body, Error, Request, Response, StatusCode};
 
 use github_contrib_stats::{github, render::Render, render::SvgRenderer};
 
+const FORM_TEMPLATE: &str = include_str!("form.html");
+const STATS_TEMPLATE: &str = include_str!("stats.html");
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     env_logger::init();
@@ -53,78 +56,10 @@ async fn main() -> Result<(), Error> {
 }
 
 fn render_form() -> Result<Response<Body>, Error> {
-    let html = r#"<!DOCTYPE html>
-<html>
-<head>
-    <title>GitHub Contribution Stats</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            line-height: 1.5;
-            color: #24292e;
-        }
-        h1 { color: #2f363d; }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }
-        input {
-            padding: 0.5rem;
-            border: 1px solid #e1e4e8;
-            border-radius: 6px;
-            width: 100%;
-            max-width: 300px;
-        }
-        button {
-            background-color: #2ea44f;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #2c974b;
-        }
-        .result {
-            margin-top: 2rem;
-        }
-        .markdown-snippet {
-            background: #f6f8fa;
-            padding: 0.5rem;
-            border-radius: 6px;
-            font-family: monospace;
-            margin: 1rem 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>GitHub Contribution Stats Generator</h1>
-    <form method="POST">
-        <div class="form-group">
-            <label for="username">GitHub Username:</label>
-            <input type="text" id="username" name="username" required>
-        </div>
-        <div class="form-group">
-            <label for="max_repos">Max Repositories (optional):</label>
-            <input type="number" id="max_repos" name="max_repos" min="1">
-        </div>
-        <button type="submit">Generate Stats</button>
-    </form>
-</body>
-</html>"#;
-
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html; charset=utf-8")
-        .body(Body::from(html))?)
+        .body(Body::from(FORM_TEMPLATE))?)
 }
 
 async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
@@ -159,206 +94,10 @@ async fn render_stats_page(username: String, req: &Request) -> Result<Response<B
     let created_url = format!("{}/{}/created.svg{}", origin, username, max_repos_param);
     let contributed_url = format!("{}/{}/contributed.svg{}", origin, username, max_repos_param);
 
-    let result_html = format!(
-        r#"<!DOCTYPE html>
-<html>
-<head>
-    <title>GitHub Stats for {username}</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            line-height: 1.5;
-            color: #24292e;
-        }}
-        .markdown-snippet {{
-            background: #f6f8fa;
-            padding: 0.5rem;
-            border-radius: 6px;
-            font-family: monospace;
-            margin: 1rem 0;
-            cursor: pointer;
-            position: relative;
-            transition: background-color 0.2s;
-        }}
-        .markdown-snippet:hover {{
-            background: #e1e4e8;
-        }}
-        .markdown-snippet::after {{
-            content: 'Click to copy';
-            position: absolute;
-            right: 0.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.8rem;
-            color: #6a737d;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }}
-        .markdown-snippet:hover::after {{
-            opacity: 1;
-        }}
-        .markdown-snippet.copied::after {{
-            content: 'Copied!';
-            color: #28a745;
-        }}
-        .svg-container {{
-            width: 100%;
-            margin: 1rem 0;
-            background: #f6f8fa;
-            border-radius: 6px;
-            min-height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }}
-        .svg-container svg {{
-            width: 100%;
-            height: 100%;
-            max-width: 800px;
-            display: block;
-        }}
-        object {{
-            display: none;
-        }}
-        .loading {{
-            position: relative;
-        }}
-        .loading::after {{
-            content: 'Loading...';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            color: #6a737d;
-            opacity: 1;
-            transition: opacity 0.3s;
-        }}
-        .top-buttons {{
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }}
-        .github-button {{
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background-color: #24292e;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            transition: background-color 0.2s;
-        }}
-        .github-button:hover {{
-            background-color: #000;
-        }}
-        .github-icon {{
-            width: 20px;
-            height: 20px;
-            fill: currentColor;
-        }}
-        a {{
-            color: #0366d6;
-            text-decoration: none;
-        }}
-        a:hover {{
-            text-decoration: underline;
-        }}
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin: 2rem 0;
-        }}
-        .stats-column {{
-            min-width: 0;
-        }}
-        @media (max-width: 768px) {{
-            .stats-grid {{
-                grid-template-columns: 1fr;
-            }}
-        }}
-        .markdown-label {{
-            font-size: 0.9rem;
-            color: #586069;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }}
-    </style>
-    <script>
-        async function loadSVG(url, containerId) {{
-            try {{
-                const response = await fetch(url);
-                const svgText = await response.text();
-                const container = document.getElementById(containerId);
-                container.innerHTML = svgText;
-                container.classList.remove('loading');
-            }} catch (error) {{
-                console.error('Error loading SVG:', error);
-            }}
-        }}
-
-        window.onload = () => {{
-            loadSVG('{created_url}', 'created-svg');
-            loadSVG('{contributed_url}', 'contributed-svg');
-        }};
-
-        function copyMarkdown(element) {{
-            const text = element.textContent.trim();
-            navigator.clipboard.writeText(text).then(() => {{
-                element.classList.add('copied');
-                setTimeout(() => {{
-                    element.classList.remove('copied');
-                }}, 2000);
-            }});
-        }}
-    </script>
-</head>
-<body>
-    <div class="top-buttons">
-        <a href="/">← Generate for another user</a>
-        <a href="https://github.com/j178/github-contrib-stats" class="github-button" target="_blank" rel="noopener noreferrer">
-            <svg class="github-icon" viewBox="0 0 16 16" version="1.1" aria-hidden="true">
-                <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
-            </svg>
-            Star on GitHub
-        </a>
-    </div>
-
-    <h1>GitHub Stats for <a href="https://github.com/{username}">{username}</a></h1>
-    <div class="stats-grid">
-        <div class="stats-column">
-            <h2>Created Repositories</h2>
-            <div class="markdown-label">📋 Markdown</div>
-            <div class="markdown-snippet" onclick="copyMarkdown(this)">
-                ![Repos I created]({created_url})
-            </div>
-            <div id="created-svg" class="svg-container loading">
-            </div>
-        </div>
-        
-        <div class="stats-column">
-            <h2>Contributed Repositories</h2>
-            <div class="markdown-label">📋 Markdown</div>
-            <div class="markdown-snippet" onclick="copyMarkdown(this)">
-                ![Repos I contributed to]({contributed_url})
-            </div>
-            <div id="contributed-svg" class="svg-container loading">
-            </div>
-        </div>
-    </div>
-</body>
-</html>"#,
-    );
+    let result_html = STATS_TEMPLATE
+        .replace("{username}", &username)
+        .replace("{created_url}", &created_url)
+        .replace("{contributed_url}", &contributed_url);
 
     Ok(Response::builder()
         .status(StatusCode::OK)
