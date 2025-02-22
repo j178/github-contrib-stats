@@ -120,8 +120,8 @@ where
 {
     let redis_client = get_redis_client().await?;
     let cached_result = async {
-        let mut redis_conn = redis_client.get_multiplexed_tokio_connection().await.unwrap();
-        let cached: Option<Vec<u8>> = redis_conn.get(cache_key).await.unwrap();
+        let mut redis_conn = redis_client.get_multiplexed_tokio_connection().await?;
+        let cached: Option<Vec<u8>> = redis_conn.get(cache_key).await?;
 
         if let Some(cached_data) = cached {
             bincode::deserialize(&cached_data)
@@ -143,8 +143,8 @@ where
             let value = compute().await?;
 
             let cached_data = bincode::serialize(&value)?;
-            let mut redis_conn = redis_client.get_multiplexed_tokio_connection().await.unwrap();
-            let _: () = redis_conn.set_ex(cache_key, cached_data, 3600).await.unwrap();
+            let mut redis_conn = redis_client.get_multiplexed_tokio_connection().await?;
+            let _: () = redis_conn.set_ex(cache_key, cached_data, 3600).await?;
 
             Ok(value)
         }
