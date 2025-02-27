@@ -155,6 +155,36 @@ pub async fn get_created_repos(
             .json()
             .await?;
 
+        // Check for GraphQL errors
+        if let Some(errors) = resp.get("errors") {
+            if let Some(error) = errors.as_array().and_then(|arr| arr.first()) {
+                let error_type = error
+                    .get("type")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("UNKNOWN");
+                let message = error
+                    .get("message")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("Unknown error");
+
+                if error_type == "NOT_FOUND" {
+                    return Err(anyhow::anyhow!("User not found: {}", message));
+                } else {
+                    return Err(anyhow::anyhow!("GitHub API error: {}", message));
+                }
+            } else {
+                return Err(anyhow::anyhow!("GitHub API returned errors: {}", errors));
+            }
+        }
+
+        // Check if user data is null
+        if resp["data"]["user"].is_null() {
+            return Err(anyhow::anyhow!(
+                "User '{}' not found or is not a user account",
+                username
+            ));
+        }
+
         let repo_result: RepositoryResult =
             serde_json::from_value(resp["data"]["user"]["repositories"].take())?;
 
