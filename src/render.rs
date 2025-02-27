@@ -284,10 +284,18 @@ impl SvgRenderer {
     fn create_language_icon(&self, x: i32, y: i32, language: &str) -> Option<Group> {
         self.get_language_icon(language).map(|(color, _)| {
             let icon_id = format!("lang-{}", language.to_lowercase());
+            
+            // Apply appropriate scale factor based on icon type
+            // SimpleIcons (24x24 viewBox) need a larger scale to match other icons (512x512 viewBox)
+            let (scale_factor, y_offset) = match language.to_lowercase().as_str() {
+                "c" | "c++" | "dockerfile" | "lua" | "perl" | "zig" => (0.5, -6), // SimpleIcons need ~21x larger scale
+                _ => (0.025, -6),                                                  // Default scale for other icons
+            };
+            
             Group::new()
                 .set(
                     "transform",
-                    format!("translate({}, {}) scale(0.025)", x, y - 6),
+                    format!("translate({}, {}) scale({})", x, y + y_offset, scale_factor),
                 )
                 .add(
                     svg::node::element::Use::new()
@@ -303,11 +311,17 @@ impl SvgRenderer {
         for lang in languages {
             let lang = lang.to_lowercase();
             if let Some((_, path)) = self.get_language_icon(&lang) {
+                // Set appropriate viewBox based on icon type
+                let view_box = match lang.as_str() {
+                    "c" | "c++" | "dockerfile" | "lua" | "perl" | "zig" => "0 0 24 24", // SimpleIcons use 24x24 viewBox
+                    _ => "0 0 512 512", // Other icons use 512x512 viewBox
+                };
+                
                 defs = defs.add(
                     Path::new()
                         .set("id", format!("lang-{}", lang))
                         .set("d", path)
-                        .set("viewBox", "0 0 512 512"),
+                        .set("viewBox", view_box),
                 );
             }
         }
@@ -867,6 +881,16 @@ mod tests {
             create_test_repo("repo-dart", "Dart", 0, 0, false),
             create_test_repo("repo-php", "PHP", 0, 0, false),
             create_test_repo("repo-html", "HTML", 0, 0, false),
+            create_test_repo("repo-dockerfile", "Dockerfile", 0, 0, false),
+            create_test_repo("repo-shell", "Shell", 0, 0, false),
+            create_test_repo("repo-assembly", "Assembly", 0, 0, false),
+            create_test_repo("repo-erlang", "Erlang", 0, 0, false),
+            create_test_repo("repo-haskell", "Haskell", 0, 0, false),
+            create_test_repo("repo-lisp", "Lisp", 0, 0, false),
+            create_test_repo("repo-ocaml", "OCaml", 0, 0, false),
+            create_test_repo("repo-scheme", "Scheme", 0, 0, false),
+            create_test_repo("repo-elm", "Elm", 0, 0, false),
+            create_test_repo("repo-graphql", "GraphQL", 0, 0, false),
         ];
 
         let contributed_repos = vec![
