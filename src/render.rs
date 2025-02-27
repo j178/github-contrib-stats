@@ -293,7 +293,7 @@ impl SvgRenderer {
         let (scale_factor, view_box) = match language.as_str() {
             // SimpleIcons need ~21x larger scale
             "go" | "c" | "c++" | "dockerfile" | "lua" | "perl" | "zig" | "typescript" | "php"
-            | "ruby" | "swift" | "kotlin" | "scala" | "r" | "dart" | "markdown" | "shell"
+            | "ruby" | "swift" | "kotlin" | "scala" | "r" | "dart" | "markdown" | "tex"
             | "haskell" | "html" => (0.5, "0 0 24 24"),
             // Default scale for other icons
             _ => (0.025, "0 0 512 512"),
@@ -901,6 +901,7 @@ mod tests {
             create_test_repo("repo-elm", "Elm", 0, 0, false),
             create_test_repo("repo-graphql", "GraphQL", 0, 0, false),
             create_test_repo("repo-markdown", "Markdown", 0, 0, false),
+            create_test_repo("repo-tex", "TeX", 0, 0, false),
         ];
 
         let contributed_repos = vec![
