@@ -288,7 +288,7 @@ impl SvgRenderer {
             // Apply appropriate scale factor based on icon type
             // SimpleIcons (24x24 viewBox) need a larger scale to match other icons (512x512 viewBox)
             let (scale_factor, y_offset) = match language.to_lowercase().as_str() {
-                "c" | "c++" | "dockerfile" | "lua" | "perl" | "zig" => (0.5, -6), // SimpleIcons need ~21x larger scale
+                "c" | "c++" | "dockerfile" | "lua" | "perl" | "tex" | "zig" => (0.5, -6), // SimpleIcons need ~21x larger scale
                 _ => (0.025, -6),                                                  // Default scale for other icons
             };
             
@@ -313,7 +313,7 @@ impl SvgRenderer {
             if let Some((_, path)) = self.get_language_icon(&lang) {
                 // Set appropriate viewBox based on icon type
                 let view_box = match lang.as_str() {
-                    "c" | "c++" | "dockerfile" | "lua" | "perl" | "zig" => "0 0 24 24", // SimpleIcons use 24x24 viewBox
+                    "c" | "c++" | "dockerfile" | "lua" | "perl" | "tex" | "zig" => "0 0 24 24", // SimpleIcons use 24x24 viewBox
                     _ => "0 0 512 512", // Other icons use 512x512 viewBox
                 };
                 
@@ -891,6 +891,7 @@ mod tests {
             create_test_repo("repo-scheme", "Scheme", 0, 0, false),
             create_test_repo("repo-elm", "Elm", 0, 0, false),
             create_test_repo("repo-graphql", "GraphQL", 0, 0, false),
+            create_test_repo("repo-tex", "Tex", 0, 0, false),
         ];
 
         let contributed_repos = vec![
