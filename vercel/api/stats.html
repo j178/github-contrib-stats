@@ -2,10 +2,11 @@
 <html>
 <head>
     <title>GitHub Stats for {username}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 1200px;
+            max-width: min(90vw, 1800px); /* Increase max-width but limit by viewport percentage */
             margin: 2rem auto;
             padding: 0 1rem;
             line-height: 1.5;
@@ -20,6 +21,7 @@
             cursor: pointer;
             position: relative;
             transition: background-color 0.2s;
+            word-break: break-all; /* Ensure long URLs wrap properly */
         }
         .markdown-snippet:hover {
             background: #e1e4e8;
@@ -98,10 +100,47 @@
         }
         .stats-column {
             min-width: 0;
+            width: 100%;
+        }
+        .svg-container {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        /* Responsive adjustments */
+        @media (min-width: 1800px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 3rem;
+            }
         }
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            body {
+                margin: 1rem auto;
+            }
+            .top-buttons {
+                position: static;
+                margin-bottom: 1.5rem;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            h1 {
+                font-size: 1.5rem;
+                margin-top: 1rem;
+            }
+        }
+        @media (max-width: 480px) {
+            body {
+                padding: 0 0.75rem;
+            }
+            .markdown-snippet::after {
+                display: none;
+            }
+            .markdown-snippet {
+                font-size: 0.8rem;
             }
         }
         .markdown-label {
