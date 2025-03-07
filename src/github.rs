@@ -292,6 +292,9 @@ async fn get_one_page_of_pr(
     Ok(result)
 }
 
+/// For one query, GitHub only returns up to 1000 results (MAX_RESULTS) at most, with a maximum of 100 results per page.
+/// This function fetches up to MAX_RESULTS PRs, paginating if necessary.
+/// For results beyond MAX_RESULTS, it will be fetched in subsequent queries with limited with the `created:<YYYY-MM-DD` filter.
 async fn get_all_pages_of_pr(body: Value, total: Option<u32>) -> Result<(u32, Vec<PullRequest>)> {
     let mut all_prs = Vec::new();
 
