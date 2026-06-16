@@ -143,14 +143,13 @@ where
             let value = compute().await?;
 
             // Store in cache
-            if let Ok(cached_data) = bincode::serialize(&value) {
-                if let Err(e) = conn
+            if let Ok(cached_data) = bincode::serialize(&value)
+                && let Err(e) = conn
                     .set_ex::<_, _, ()>(cache_key, cached_data, 12 * 3600)
                     .await
                 {
                     info!("Failed to store in cache: {}", e);
                 }
-            }
 
             Ok(value)
         }

@@ -100,7 +100,7 @@ struct RepositoryResult {
     #[allow(dead_code)]
     total_count: u32,
     page_info: PageInfo,
-    edges: Vec<Edge<Repository>>,
+    edges: Vec<Option<Edge<Repository>>>,
 }
 
 impl Repository {
@@ -191,7 +191,13 @@ pub async fn get_created_repos(
         has_next_page = repo_result.page_info.has_next_page;
         end_cursor = repo_result.page_info.end_cursor;
 
-        repos.extend(repo_result.edges.into_iter().map(|edge| edge.node));
+        repos.extend(
+            repo_result
+                .edges
+                .into_iter()
+                .flatten()
+                .map(|edge| edge.node),
+        );
     }
 
     let mut repos: Vec<_> = repos
@@ -247,7 +253,7 @@ pub struct PullRequest {
 struct PullRequestSearchResult {
     issue_count: u32,
     page_info: PageInfo,
-    edges: Vec<Edge<PullRequest>>,
+    edges: Vec<Option<Edge<PullRequest>>>,
 }
 
 const QUERY_PRS: &str = "\
@@ -298,17 +304,14 @@ async fn get_one_page_of_pr(
 async fn get_all_pages_of_pr(body: Value, total: Option<u32>) -> Result<(u32, Vec<PullRequest>)> {
     let mut all_prs = Vec::new();
 
-    let total_all_query;
-    let mut beginning = 0u32;
     // total not known, fetch first page to get it
-    if total.is_none() {
-        let result = get_one_page_of_pr(body.clone(), None).await?;
-        total_all_query = result.issue_count;
-        all_prs.extend(result.edges.into_iter().map(|edge| edge.node));
-        beginning = PER_PAGE as u32;
+    let (total_all_query, beginning) = if let Some(total_all_query) = total {
+        (total_all_query, 0)
     } else {
-        total_all_query = total.unwrap();
-    }
+        let result = get_one_page_of_pr(body.clone(), None).await?;
+        all_prs.extend(result.edges.into_iter().flatten().map(|edge| edge.node));
+        (result.issue_count, PER_PAGE as u32)
+    };
     let total_this_query = MAX_RESULTS.min(total_all_query);
 
     // has more pages
@@ -328,7 +331,7 @@ async fn get_all_pages_of_pr(body: Value, total: Option<u32>) -> Result<(u32, Ve
         let results = join_all(futures).await;
         for result in results {
             if let Ok(result) = result {
-                all_prs.extend(result.edges.into_iter().map(|edge| edge.node));
+                all_prs.extend(result.edges.into_iter().flatten().map(|edge| edge.node));
             } else {
                 error!("failed to fetch a page of PRs")
             }
@@ -431,4 +434,63 @@ pub async fn get_contributed_repos(
     }
 
     Ok(repos)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pull_request_search_result_accepts_null_edges() {
+        let result: PullRequestSearchResult = serde_json::from_value(json!({
+            "issueCount": 2,
+            "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": null,
+            },
+            "edges": [
+                null,
+                {
+                    "node": {
+                        "url": "https://github.com/owner/repo/pull/1",
+                        "createdAt": "2026-06-15T00:00:00Z",
+                        "repository": {
+                            "stargazerCount": 42,
+                        },
+                    },
+                },
+            ],
+        }))
+        .unwrap();
+
+        assert_eq!(result.edges.into_iter().flatten().count(), 1);
+    }
+
+    #[test]
+    fn repository_result_accepts_null_edges() {
+        let result: RepositoryResult = serde_json::from_value(json!({
+            "totalCount": 2,
+            "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": null,
+            },
+            "edges": [
+                null,
+                {
+                    "node": {
+                        "nameWithOwner": "owner/repo",
+                        "stargazerCount": 42,
+                        "forkCount": 7,
+                        "primaryLanguage": null,
+                        "isArchived": false,
+                        "createdAt": "2026-06-15T00:00:00Z",
+                        "pushedAt": null,
+                    },
+                },
+            ],
+        }))
+        .unwrap();
+
+        assert_eq!(result.edges.into_iter().flatten().count(), 1);
+    }
 }
