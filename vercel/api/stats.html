@@ -12,58 +12,167 @@
             line-height: 1.5;
             color: #24292e;
         }
-        .markdown-snippet {
-            background: #f6f8fa;
-            padding: 0.5rem;
-            border-radius: 6px;
-            font-family: monospace;
+        h1 {
+            margin: 1.5rem 0 0.5rem;
+        }
+        h2 {
+            margin: 0 0 0.75rem;
+            color: #2f363d;
+            font-size: 1.2rem;
+        }
+        .embed-card {
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            background: #ffffff;
             margin: 1rem 0;
+            overflow: hidden;
+        }
+        .embed-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.625rem;
+            border-bottom: 1px solid #d0d7de;
+            background: #f6f8fa;
+        }
+        .format-tabs {
+            display: inline-flex;
+            gap: 0.125rem;
+            padding: 0.125rem;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            background: #ffffff;
+        }
+        .format-tab,
+        .copy-button {
+            border: 0;
+            border-radius: 4px;
             cursor: pointer;
-            position: relative;
-            transition: background-color 0.2s;
-            word-break: break-all; /* Ensure long URLs wrap properly */
+            font: inherit;
+            font-size: 0.85rem;
+            line-height: 1;
         }
-        .markdown-snippet:hover {
-            background: #e1e4e8;
+        .format-tab {
+            background: transparent;
+            color: #57606a;
+            padding: 0.45rem 0.65rem;
         }
-        .markdown-snippet::after {
-            content: 'Click to copy';
+        .format-tab[aria-pressed="true"] {
+            background: #0969da;
+            color: #ffffff;
+        }
+        .copy-button {
+            background: #24292e;
+            color: #ffffff;
+            padding: 0.575rem 0.8rem;
+            min-width: 4.5rem;
+        }
+        .copy-button:hover {
+            background: #000000;
+        }
+        .format-tab:focus-visible,
+        .copy-button:focus-visible {
+            outline: 2px solid #0969da;
+            outline-offset: 2px;
+        }
+        .snippet-box {
+            margin: 0;
+            padding: 0.75rem;
+            min-height: 3.25rem;
+            overflow-x: auto;
+            background: #ffffff;
+            color: #24292e;
+            font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.85rem;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .copy-state {
             position: absolute;
-            right: 0.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.8rem;
-            color: #6a737d;
-            opacity: 0;
-            transition: opacity 0.2s;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
-        .markdown-snippet:hover::after {
-            opacity: 1;
-        }
-        .markdown-snippet.copied::after {
-            content: 'Copied!';
-            color: #28a745;
-        }
-        .loading {
+        .svg-container {
             position: relative;
+            max-width: 100%;
+            min-height: 280px;
+            overflow: auto;
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            background: #ffffff;
         }
-        .loading::after {
-            content: 'Loading...';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
+        .svg-container[data-state="loading"],
+        .svg-container[data-state="error"] {
+            display: grid;
+            place-items: center;
+            padding: 1rem;
+        }
+        .svg-container[data-state="loaded"] {
+            padding: 0;
+        }
+        .svg-container > svg {
+            display: block;
+            width: 100%;
+            min-width: 720px;
+            height: auto;
+        }
+        .svg-status {
+            display: grid;
+            justify-items: center;
+            gap: 0.75rem;
+            text-align: center;
             color: #6a737d;
-            opacity: 1;
-            transition: opacity 0.3s;
+        }
+        .svg-status strong {
+            display: block;
+            color: #24292e;
+            font-size: 0.95rem;
+            margin-bottom: 0.125rem;
+        }
+        .spinner {
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid #d0d7de;
+            border-top-color: #0969da;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .retry-button {
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            background: #f6f8fa;
+            color: #24292e;
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.9rem;
+            padding: 0.45rem 0.8rem;
+        }
+        .retry-button:hover {
+            background: #eaeef2;
+        }
+        .retry-button:focus-visible {
+            outline: 2px solid #0969da;
+            outline-offset: 2px;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
         .top-buttons {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
             display: flex;
             gap: 1rem;
             align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
         }
         .github-button {
             display: flex;
@@ -79,6 +188,11 @@
         }
         .github-button:hover {
             background-color: #000;
+        }
+        .github-button:focus-visible,
+        a:focus-visible {
+            outline: 2px solid #0969da;
+            outline-offset: 2px;
         }
         .github-icon {
             width: 20px;
@@ -102,10 +216,6 @@
             min-width: 0;
             width: 100%;
         }
-        .svg-container {
-            max-width: 100%;
-            overflow-x: auto;
-        }
         /* Responsive adjustments */
         @media (min-width: 1800px) {
             .stats-grid {
@@ -122,7 +232,6 @@
                 margin: 1rem auto;
             }
             .top-buttons {
-                position: static;
                 margin-bottom: 1.5rem;
                 flex-direction: column;
                 align-items: flex-start;
@@ -136,14 +245,23 @@
             body {
                 padding: 0 0.75rem;
             }
-            .markdown-snippet::after {
-                display: none;
+            .embed-toolbar {
+                align-items: stretch;
+                flex-direction: column;
             }
-            .markdown-snippet {
+            .format-tabs {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                width: 100%;
+            }
+            .copy-button {
+                width: 100%;
+            }
+            .snippet-box {
                 font-size: 0.8rem;
             }
         }
-        .markdown-label {
+        .embed-label {
             font-size: 0.9rem;
             color: #586069;
             margin-bottom: 0.5rem;
@@ -151,31 +269,138 @@
         }
     </style>
     <script>
-        async function loadSVG(url, containerId) {
+        function renderLoading(container, label) {
+            container.dataset.state = 'loading';
+            container.setAttribute('aria-busy', 'true');
+            container.innerHTML = `
+                <div class="svg-status" role="status" aria-live="polite">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span>
+                        <strong>Loading ${label}</strong>
+                        <span>Fetching the SVG...</span>
+                    </span>
+                </div>
+            `;
+        }
+
+        function renderError(container, label, retry) {
+            container.dataset.state = 'error';
+            container.removeAttribute('aria-busy');
+            container.innerHTML = `
+                <div class="svg-status" role="alert">
+                    <strong>Could not load ${label}</strong>
+                    <span>Check the username or try again.</span>
+                    <button class="retry-button" type="button">Retry</button>
+                </div>
+            `;
+            container.querySelector('button').addEventListener('click', retry);
+        }
+
+        async function loadSVG(url, containerId, label) {
+            const container = document.getElementById(containerId);
+            renderLoading(container, label);
+
             try {
-                const response = await fetch(url);
+                const response = await fetch(url, { headers: { Accept: 'image/svg+xml' } });
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
                 const svgText = await response.text();
-                const container = document.getElementById(containerId);
+                if (!svgText.trim().startsWith('<svg')) {
+                    throw new Error('Response was not an SVG document');
+                }
                 container.innerHTML = svgText;
-                container.classList.remove('loading');
+                container.dataset.state = 'loaded';
+                container.removeAttribute('aria-busy');
+
+                const svg = container.querySelector('svg');
+                if (svg && !svg.getAttribute('aria-label')) {
+                    svg.setAttribute('role', 'img');
+                    svg.setAttribute('aria-label', label);
+                }
             } catch (error) {
                 console.error('Error loading SVG:', error);
+                renderError(container, label, () => loadSVG(url, containerId, label));
             }
         }
 
-        window.onload = () => {
-            loadSVG('{created_url}', 'created-svg');
-            loadSVG('{contributed_url}', 'contributed-svg');
-        };
+        function escapeHtmlAttribute(value) {
+            return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        }
 
-        function copyMarkdown(element) {
-            const text = element.textContent.trim();
-            navigator.clipboard.writeText(text).then(() => {
-                element.classList.add('copied');
-                setTimeout(() => {
-                    element.classList.remove('copied');
-                }, 2000);
+        function getSnippet(card, format) {
+            const url = card.dataset.url;
+            const label = card.dataset.label;
+            if (format === 'html') {
+                return `<a href="${escapeHtmlAttribute(url)}">${label}</a>`;
+            }
+            if (format === 'url') {
+                return url;
+            }
+            return `![${label}](${url})`;
+        }
+
+        function updateSnippet(card, format) {
+            const selectedFormat = format || card.dataset.format || 'markdown';
+            card.dataset.format = selectedFormat;
+            card.querySelector('code').textContent = getSnippet(card, selectedFormat);
+
+            card.querySelectorAll('.format-tab').forEach((tab) => {
+                const selected = tab.dataset.format === selectedFormat;
+                tab.setAttribute('aria-pressed', selected ? 'true' : 'false');
             });
+
+            const copyButton = card.querySelector('.copy-button');
+            copyButton.textContent = 'Copy';
+            card.querySelector('.copy-state').textContent = '';
+        }
+
+        function selectFormat(button) {
+            updateSnippet(button.closest('.embed-card'), button.dataset.format);
+        }
+
+        function setupSnippetCards() {
+            document.querySelectorAll('.embed-card').forEach((card) => {
+                updateSnippet(card, card.dataset.format);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setupSnippetCards();
+            loadSVG('{created_url}', 'created-svg', 'created repositories');
+            loadSVG('{contributed_url}', 'contributed-svg', 'contributed repositories');
+        });
+
+        async function copySnippet(button) {
+            const card = button.closest('.embed-card');
+            const text = card.querySelector('code').textContent.trim();
+            const state = card.querySelector('.copy-state');
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.setAttribute('readonly', '');
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    textarea.remove();
+                }
+                button.textContent = 'Copied';
+                state.textContent = 'Copied';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                    state.textContent = '';
+                }, 2000);
+            } catch (error) {
+                console.error('Error copying snippet:', error);
+                button.textContent = 'Failed';
+                state.textContent = 'Copy failed';
+            }
         }
     </script>
 </head>
@@ -194,21 +419,39 @@
     <div class="stats-grid">
         <div class="stats-column">
             <h2>Created Repositories</h2>
-            <div class="markdown-label">📋 Markdown</div>
-            <div class="markdown-snippet" onclick="copyMarkdown(this)">
-                ![Repos I created]({created_url})
+            <div class="embed-label">Embed</div>
+            <div class="embed-card" data-format="markdown" data-url="{created_url}" data-label="Repos I created">
+                <div class="embed-toolbar">
+                    <div class="format-tabs" role="group" aria-label="Created repositories snippet format">
+                        <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
+                        <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
+                        <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
+                    </div>
+                    <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
+                </div>
+                <pre class="snippet-box"><code></code></pre>
+                <span class="copy-state" aria-live="polite"></span>
             </div>
-            <div id="created-svg" class="svg-container loading">
+            <div id="created-svg" class="svg-container" data-state="loading" aria-busy="true">
             </div>
         </div>
         
         <div class="stats-column">
             <h2>Contributed Repositories</h2>
-            <div class="markdown-label">📋 Markdown</div>
-            <div class="markdown-snippet" onclick="copyMarkdown(this)">
-                ![Repos I contributed to]({contributed_url})
+            <div class="embed-label">Embed</div>
+            <div class="embed-card" data-format="markdown" data-url="{contributed_url}" data-label="Repos I contributed to">
+                <div class="embed-toolbar">
+                    <div class="format-tabs" role="group" aria-label="Contributed repositories snippet format">
+                        <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
+                        <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
+                        <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
+                    </div>
+                    <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
+                </div>
+                <pre class="snippet-box"><code></code></pre>
+                <span class="copy-state" aria-live="polite"></span>
             </div>
-            <div id="contributed-svg" class="svg-container loading">
+            <div id="contributed-svg" class="svg-container" data-state="loading" aria-busy="true">
             </div>
         </div>
     </div>
