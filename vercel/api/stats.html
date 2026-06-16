@@ -21,28 +21,24 @@
             font-size: 1.2rem;
         }
         .embed-card {
-            border: 1px solid #d0d7de;
             border-radius: 8px;
-            background: #ffffff;
-            margin: 1rem 0;
-            overflow: hidden;
+            background: #f6f8fa;
+            margin: 0.75rem 0 1.25rem;
+            padding: 0.5rem;
         }
         .embed-toolbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 0.75rem;
-            padding: 0.625rem;
-            border-bottom: 1px solid #d0d7de;
-            background: #f6f8fa;
+            margin-bottom: 0.5rem;
         }
         .format-tabs {
             display: inline-flex;
             gap: 0.125rem;
             padding: 0.125rem;
-            border: 1px solid #d0d7de;
             border-radius: 6px;
-            background: #ffffff;
+            background: #eaeef2;
         }
         .format-tab,
         .copy-button {
@@ -82,6 +78,7 @@
             min-height: 3.25rem;
             overflow-x: auto;
             background: #ffffff;
+            border-radius: 6px;
             color: #24292e;
             font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
             font-size: 0.85rem;
@@ -105,9 +102,8 @@
             max-width: 100%;
             min-height: 280px;
             overflow: auto;
-            border: 1px solid #d0d7de;
             border-radius: 8px;
-            background: #ffffff;
+            background: #f6f8fa;
         }
         .svg-container[data-state="loading"],
         .svg-container[data-state="error"] {
@@ -117,6 +113,7 @@
         }
         .svg-container[data-state="loaded"] {
             padding: 0;
+            background: transparent;
         }
         .svg-container > svg {
             display: block;
@@ -146,9 +143,9 @@
             animation: spin 0.8s linear infinite;
         }
         .retry-button {
-            border: 1px solid #d0d7de;
+            border: 0;
             border-radius: 6px;
-            background: #f6f8fa;
+            background: #eaeef2;
             color: #24292e;
             cursor: pointer;
             font: inherit;
@@ -260,12 +257,6 @@
             .snippet-box {
                 font-size: 0.8rem;
             }
-        }
-        .embed-label {
-            font-size: 0.9rem;
-            color: #586069;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
         }
     </style>
     <script>
@@ -419,7 +410,6 @@
     <div class="stats-grid">
         <div class="stats-column">
             <h2>Created Repositories</h2>
-            <div class="embed-label">Embed</div>
             <div class="embed-card" data-format="markdown" data-url="{created_url}" data-label="Repos I created">
                 <div class="embed-toolbar">
                     <div class="format-tabs" role="group" aria-label="Created repositories snippet format">
@@ -438,7 +428,6 @@
         
         <div class="stats-column">
             <h2>Contributed Repositories</h2>
-            <div class="embed-label">Embed</div>
             <div class="embed-card" data-format="markdown" data-url="{contributed_url}" data-label="Repos I contributed to">
                 <div class="embed-toolbar">
                     <div class="format-tabs" role="group" aria-label="Contributed repositories snippet format">
