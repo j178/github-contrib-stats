@@ -122,6 +122,13 @@
             min-width: 0;
         }
 
+        .label-row {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-bottom: 0.35rem;
+        }
+
         .field label,
         .toggle-label {
             display: block;
@@ -130,6 +137,73 @@
             font-size: 0.78rem;
             font-weight: 700;
             text-transform: uppercase;
+        }
+
+        .label-row label,
+        .label-row .toggle-label {
+            margin-bottom: 0;
+        }
+
+        .help-tip {
+            position: relative;
+            display: inline-grid;
+            width: 1rem;
+            height: 1rem;
+            place-items: center;
+            border-radius: 50%;
+            background: var(--line);
+            color: var(--muted);
+            cursor: help;
+            font-size: 0.7rem;
+            font-weight: 800;
+            line-height: 1;
+            text-transform: none;
+        }
+
+        .help-tip::after {
+            position: absolute;
+            z-index: 20;
+            bottom: calc(100% + 0.45rem);
+            left: 50%;
+            width: max-content;
+            max-width: min(17rem, 80vw);
+            padding: 0.45rem 0.55rem;
+            border-radius: 6px;
+            background: #24292f;
+            box-shadow: var(--shadow);
+            color: #ffffff;
+            content: attr(data-tooltip);
+            font-size: 0.78rem;
+            font-weight: 500;
+            line-height: 1.35;
+            opacity: 0;
+            pointer-events: none;
+            text-align: left;
+            transform: translate(-50%, 0.25rem);
+            transition: opacity 0.12s ease, transform 0.12s ease;
+            white-space: normal;
+        }
+
+        .help-tip::before {
+            position: absolute;
+            z-index: 21;
+            bottom: calc(100% + 0.2rem);
+            left: 50%;
+            border: 0.25rem solid transparent;
+            border-top-color: #24292f;
+            content: "";
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 0.25rem);
+            transition: opacity 0.12s ease, transform 0.12s ease;
+        }
+
+        .help-tip:hover::after,
+        .help-tip:hover::before,
+        .help-tip:focus-visible::after,
+        .help-tip:focus-visible::before {
+            opacity: 1;
+            transform: translate(-50%, 0);
         }
 
         .field input[type="text"],
@@ -262,14 +336,21 @@
             min-width: 0;
         }
 
-        .embed-card {
-            margin: 0.75rem 0 1rem;
-            padding: 0.5rem;
+        .column-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .share-panel {
+            margin: 0 0 1.35rem;
+            padding: 0.65rem;
             border-radius: 8px;
             background: var(--surface);
         }
 
-        .embed-toolbar {
+        .share-toolbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -277,7 +358,15 @@
             margin-bottom: 0.5rem;
         }
 
-        .format-tabs {
+        .share-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .format-tabs,
+        .share-targets {
             display: inline-flex;
             gap: 0.125rem;
             padding: 0.125rem;
@@ -285,7 +374,8 @@
             background: var(--surface-strong);
         }
 
-        .format-tab {
+        .format-tab,
+        .share-target {
             border: 0;
             border-radius: 4px;
             background: transparent;
@@ -297,9 +387,27 @@
             padding: 0.45rem 0.65rem;
         }
 
-        .format-tab[aria-pressed="true"] {
+        .format-tab[aria-pressed="true"],
+        .share-target[aria-pressed="true"] {
             background: var(--accent);
             color: #ffffff;
+        }
+
+        .share-button {
+            border: 0;
+            border-radius: 6px;
+            background: var(--surface-strong);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 0.45rem 0.65rem;
+            white-space: nowrap;
+        }
+
+        .share-button:hover,
+        .share-button[aria-expanded="true"] {
+            background: var(--line);
         }
 
         .copy-button {
@@ -391,6 +499,14 @@
             margin-bottom: 0.125rem;
         }
 
+        .svg-error-message {
+            max-width: min(36rem, 100%);
+            color: var(--danger);
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.82rem;
+            overflow-wrap: anywhere;
+        }
+
         .spinner {
             width: 2rem;
             height: 2rem;
@@ -458,14 +574,25 @@
                 padding: 0.85rem;
             }
 
-            .embed-toolbar {
+            .format-tabs {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                width: 100%;
+            }
+
+            .share-toolbar {
                 align-items: stretch;
                 flex-direction: column;
             }
 
-            .format-tabs {
+            .share-controls {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .share-targets {
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(2, 1fr);
                 width: 100%;
             }
 
@@ -581,6 +708,8 @@
         function renderIdle() {
             byId('empty-state').hidden = false;
             byId('result-area').hidden = true;
+            byId('share-panel').hidden = true;
+            updateShareButtons('');
             document.title = 'GitHub Contribution Stats';
         }
 
@@ -598,17 +727,27 @@
             `;
         }
 
-        function renderError(container, label, retry) {
+        function renderError(container, label, message, retry) {
             container.dataset.state = 'error';
             container.removeAttribute('aria-busy');
             container.innerHTML = `
                 <div class="svg-status" role="alert">
                     <strong>Could not load ${label}</strong>
-                    <span>Check the username or try again.</span>
+                    <span class="svg-error-message"></span>
                     <button class="retry-button" type="button">Retry</button>
                 </div>
             `;
+            container.querySelector('.svg-error-message').textContent =
+                message || 'Check the username or try again.';
             container.querySelector('button').addEventListener('click', retry);
+        }
+
+        function responseErrorMessage(response, body) {
+            const message = body.trim();
+            if (message) {
+                return message;
+            }
+            return `Request failed with status ${response.status}`;
         }
 
         async function loadSVG(url, containerId, label) {
@@ -617,12 +756,12 @@
 
             try {
                 const response = await fetch(url, { headers: { Accept: 'image/svg+xml' } });
-                if (!response.ok) {
-                    throw new Error(`Request failed with status ${response.status}`);
-                }
                 const svgText = await response.text();
+                if (!response.ok) {
+                    throw new Error(responseErrorMessage(response, svgText));
+                }
                 if (!svgText.trim().startsWith('<svg')) {
-                    throw new Error('Response was not an SVG document');
+                    throw new Error(svgText.trim() || 'Response was not an SVG document');
                 }
                 container.innerHTML = svgText;
                 container.dataset.state = 'loaded';
@@ -635,7 +774,7 @@
                 }
             } catch (error) {
                 console.error('Error loading SVG:', error);
-                renderError(container, label, () => loadSVG(url, containerId, label));
+                renderError(container, label, error.message, () => loadSVG(url, containerId, label));
             }
         }
 
@@ -643,9 +782,18 @@
             return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
         }
 
-        function getSnippet(card, format) {
-            const url = card.dataset.url || '';
-            const label = card.dataset.label;
+        function shareUrl(kind) {
+            const panel = byId('share-panel');
+            return kind === 'contributed' ? panel.dataset.contributedUrl : panel.dataset.createdUrl;
+        }
+
+        function shareLabel(kind) {
+            return kind === 'contributed' ? 'Repos I contributed to' : 'Repos I created';
+        }
+
+        function getSnippet(kind, format) {
+            const url = shareUrl(kind);
+            const label = shareLabel(kind);
             if (!url) {
                 return '';
             }
@@ -658,30 +806,59 @@
             return `![${label}](${url})`;
         }
 
-        function updateSnippet(card, format) {
-            const selectedFormat = format || card.dataset.format || 'markdown';
-            card.dataset.format = selectedFormat;
-            card.querySelector('code').textContent = getSnippet(card, selectedFormat);
+        function updateSharePanel({ kind, format } = {}) {
+            const panel = byId('share-panel');
+            const selectedKind = kind || panel.dataset.kind || 'created';
+            const selectedFormat = format || panel.dataset.format || 'markdown';
+            panel.dataset.kind = selectedKind;
+            panel.dataset.format = selectedFormat;
+            panel.querySelector('code').textContent = getSnippet(selectedKind, selectedFormat);
 
-            card.querySelectorAll('.format-tab').forEach((tab) => {
+            panel.querySelectorAll('.share-target').forEach((tab) => {
+                const selected = tab.dataset.kind === selectedKind;
+                tab.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+
+            panel.querySelectorAll('.format-tab').forEach((tab) => {
                 const selected = tab.dataset.format === selectedFormat;
                 tab.setAttribute('aria-pressed', selected ? 'true' : 'false');
             });
 
-            const copyButton = card.querySelector('.copy-button');
+            const copyButton = panel.querySelector('.copy-button');
             copyButton.textContent = 'Copy';
-            copyButton.disabled = !card.dataset.url;
-            card.querySelector('.copy-state').textContent = '';
+            copyButton.disabled = !shareUrl(selectedKind);
+            panel.querySelector('.copy-state').textContent = '';
+        }
+
+        function updateShareButtons(activeKind) {
+            document.querySelectorAll('.share-button').forEach((button) => {
+                button.setAttribute('aria-expanded', button.dataset.kind === activeKind ? 'true' : 'false');
+            });
+        }
+
+        function openShare(kind) {
+            const panel = byId('share-panel');
+            if (!panel.hidden && panel.dataset.kind === kind) {
+                panel.hidden = true;
+                updateShareButtons('');
+                return;
+            }
+            panel.hidden = false;
+            updateSharePanel({ kind });
+            updateShareButtons(kind);
         }
 
         function selectFormat(button) {
-            updateSnippet(button.closest('.embed-card'), button.dataset.format);
+            updateSharePanel({ format: button.dataset.format });
         }
 
-        function setupSnippetCards() {
-            document.querySelectorAll('.embed-card').forEach((card) => {
-                updateSnippet(card, card.dataset.format);
-            });
+        function selectShareTarget(button) {
+            updateSharePanel({ kind: button.dataset.kind });
+            updateShareButtons(button.dataset.kind);
+        }
+
+        function setupSharePanel() {
+            updateSharePanel();
         }
 
         function renderParams(params, { push = false, sync = false } = {}) {
@@ -705,12 +882,10 @@
             byId('profile-link').textContent = username;
             byId('page-url').textContent = url;
 
-            const createdCard = document.querySelector('[data-kind="created"]');
-            const contributedCard = document.querySelector('[data-kind="contributed"]');
-            createdCard.dataset.url = createdUrl;
-            contributedCard.dataset.url = contributedUrl;
-            updateSnippet(createdCard, createdCard.dataset.format);
-            updateSnippet(contributedCard, contributedCard.dataset.format);
+            const sharePanel = byId('share-panel');
+            sharePanel.dataset.createdUrl = createdUrl;
+            sharePanel.dataset.contributedUrl = contributedUrl;
+            updateSharePanel();
 
             loadSVG(createdUrl, 'created-svg', 'created repositories');
             loadSVG(contributedUrl, 'contributed-svg', 'contributed repositories');
@@ -726,9 +901,9 @@
         }
 
         async function copySnippet(button) {
-            const card = button.closest('.embed-card');
-            const text = card.querySelector('code').textContent.trim();
-            const state = card.querySelector('.copy-state');
+            const panel = byId('share-panel');
+            const text = panel.querySelector('code').textContent.trim();
+            const state = panel.querySelector('.copy-state');
             if (!text) {
                 return;
             }
@@ -764,7 +939,7 @@
             const form = byId('generator-form');
             form.addEventListener('submit', submitGenerator);
             form.addEventListener('input', updateGenerateButton);
-            setupSnippetCards();
+            setupSharePanel();
 
             const params = currentParams();
             if (params) {
@@ -804,19 +979,31 @@
                 <input type="text" id="username" name="username" autocomplete="username" spellcheck="false" placeholder="j178" required>
             </div>
             <div class="field">
-                <label for="max_repos">Top repos</label>
+                <div class="label-row">
+                    <label for="max_repos">Top repos</label>
+                    <span class="help-tip" tabindex="0" data-tooltip="Maximum number of repositories shown after sorting and filtering. Leave empty to show all." aria-label="Maximum number of repositories shown after sorting and filtering. Leave empty to show all.">?</span>
+                </div>
                 <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All">
             </div>
             <div class="field">
-                <label for="min_stars">Min stars</label>
+                <div class="label-row">
+                    <label for="min_stars">Min stars</label>
+                    <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many stars." aria-label="Only show repositories with at least this many stars.">?</span>
+                </div>
                 <input type="number" id="min_stars" name="min_stars" min="0" step="1" inputmode="numeric" placeholder="0">
             </div>
             <div class="field">
-                <label for="min_forks">Min forks</label>
+                <div class="label-row">
+                    <label for="min_forks">Min forks</label>
+                    <span class="help-tip" tabindex="0" data-tooltip="Only affects created repositories. Contributed repositories are filtered by stars and top count." aria-label="Only affects created repositories. Contributed repositories are filtered by stars and top count.">?</span>
+                </div>
                 <input type="number" id="min_forks" name="min_forks" min="0" step="1" inputmode="numeric" placeholder="0">
             </div>
             <div class="toggle-field">
-                <span class="toggle-label">Header</span>
+                <div class="label-row">
+                    <span class="toggle-label">Header</span>
+                    <span class="help-tip" tabindex="0" data-tooltip="Show or hide the SVG title and generated date. Table column headers stay visible." aria-label="Show or hide the SVG title and generated date. Table column headers stay visible.">?</span>
+                </div>
                 <label class="toggle-control" for="show_header">
                     <input type="checkbox" id="show_header" name="show_header" checked>
                     Show
@@ -839,37 +1026,38 @@
                 <div id="page-url" class="page-url" aria-label="Generated page URL"></div>
             </div>
 
+            <div id="share-panel" class="share-panel" data-kind="created" data-format="markdown" hidden>
+                <div class="share-toolbar">
+                    <div class="share-controls">
+                        <div class="share-targets" role="group" aria-label="Share target">
+                            <button type="button" class="share-target" data-kind="created" aria-pressed="true" onclick="selectShareTarget(this)">Created</button>
+                            <button type="button" class="share-target" data-kind="contributed" aria-pressed="false" onclick="selectShareTarget(this)">Contributed</button>
+                        </div>
+                        <div class="format-tabs" role="group" aria-label="Share format">
+                            <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
+                            <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
+                            <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
+                        </div>
+                    </div>
+                    <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
+                </div>
+                <pre class="snippet-box"><code></code></pre>
+                <span class="copy-state" aria-live="polite"></span>
+            </div>
+
             <div class="stats-grid">
                 <div class="stats-column">
-                    <h2>Created Repositories</h2>
-                    <div class="embed-card" data-kind="created" data-format="markdown" data-label="Repos I created">
-                        <div class="embed-toolbar">
-                            <div class="format-tabs" role="group" aria-label="Created repositories snippet format">
-                                <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
-                                <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
-                                <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
-                            </div>
-                            <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
-                        </div>
-                        <pre class="snippet-box"><code></code></pre>
-                        <span class="copy-state" aria-live="polite"></span>
+                    <div class="column-title">
+                        <h2>Created Repositories</h2>
+                        <button type="button" class="share-button" data-kind="created" aria-controls="share-panel" aria-expanded="false" onclick="openShare('created')">Share</button>
                     </div>
                     <div id="created-svg" class="svg-container" data-state="idle"></div>
                 </div>
 
                 <div class="stats-column">
-                    <h2>Contributed Repositories</h2>
-                    <div class="embed-card" data-kind="contributed" data-format="markdown" data-label="Repos I contributed to">
-                        <div class="embed-toolbar">
-                            <div class="format-tabs" role="group" aria-label="Contributed repositories snippet format">
-                                <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
-                                <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
-                                <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
-                            </div>
-                            <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
-                        </div>
-                        <pre class="snippet-box"><code></code></pre>
-                        <span class="copy-state" aria-live="polite"></span>
+                    <div class="column-title">
+                        <h2>Contributed Repositories</h2>
+                        <button type="button" class="share-button" data-kind="contributed" aria-controls="share-panel" aria-expanded="false" onclick="openShare('contributed')">Share</button>
                     </div>
                     <div id="contributed-svg" class="svg-container" data-state="idle"></div>
                 </div>
