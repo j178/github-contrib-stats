@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use anyhow::anyhow;
@@ -6,10 +7,20 @@ use redis::AsyncCommands;
 use url::Url;
 use vercel_runtime::{Body, Error, Request, Response, StatusCode, run};
 
+use github_contrib_stats::github::{ContributedRepo, Repository};
 use github_contrib_stats::{github, render::Render, render::SvgRenderer};
 
-const FORM_TEMPLATE: &str = include_str!("form.html");
-const STATS_TEMPLATE: &str = include_str!("stats.html");
+const GENERATOR_TEMPLATE: &str = include_str!("generator.html");
+
+type Query<'a> = HashMap<Cow<'a, str>, Cow<'a, str>>;
+
+#[derive(Clone, Copy, Debug)]
+struct StatsParams {
+    max_repos: Option<usize>,
+    min_stars: u32,
+    min_forks: u32,
+    show_header: bool,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -19,31 +30,20 @@ async fn main() -> Result<(), Error> {
         info!("new request: {}", req.uri());
 
         let res = match (req.uri().path(), req.method()) {
-            ("/", method) if method == "GET" => render_form(),
-            ("/", method) if method == "POST" => handle_form_submit(req).await,
+            ("/", method) if method == "GET" => render_stats_page(),
             (path, method) if method == "GET" && path.ends_with("/created.svg") => {
-                let username = path
-                    .trim_end_matches("/created.svg")
-                    .trim_start_matches("/");
-                render_created_svg(username.to_string(), &req).await
-            }
-            (path, method) if method == "GET" && path.ends_with("/contributed.svg") => {
-                let username = path
-                    .trim_end_matches("/contributed.svg")
-                    .trim_start_matches("/");
-                render_contributed_svg(username.to_string(), &req).await
-            }
-            (path, method) if method == "GET" && path.starts_with("/") => {
-                let username = path.trim_start_matches("/");
-                if !username.is_empty() {
-                    render_stats_page(username.to_string(), &req).await
-                } else {
-                    render_form()
+                match username_from_svg_path(path, "/created.svg") {
+                    Some(username) => render_created_svg(username.to_string(), &req).await,
+                    None => not_found(),
                 }
             }
-            _ => Ok(Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::from("Not found"))?),
+            (path, method) if method == "GET" && path.ends_with("/contributed.svg") => {
+                match username_from_svg_path(path, "/contributed.svg") {
+                    Some(username) => render_contributed_svg(username.to_string(), &req).await,
+                    None => not_found(),
+                }
+            }
+            _ => not_found(),
         };
         match res {
             Ok(res) => Ok(res),
@@ -56,54 +56,96 @@ async fn main() -> Result<(), Error> {
     run(h).await
 }
 
-fn render_form() -> Result<Response<Body>, Error> {
+fn not_found() -> Result<Response<Body>, Error> {
+    Ok(Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Body::from("Not found"))?)
+}
+
+fn username_from_svg_path<'a>(path: &'a str, suffix: &str) -> Option<&'a str> {
+    let username = path.strip_prefix('/')?.strip_suffix(suffix)?;
+    is_valid_username(username).then_some(username)
+}
+
+fn is_valid_username(username: &str) -> bool {
+    !username.is_empty()
+        && username.len() <= 39
+        && !username.starts_with('-')
+        && !username.ends_with('-')
+        && username
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+}
+
+fn render_stats_page() -> Result<Response<Body>, Error> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html; charset=utf-8")
-        .body(Body::from(FORM_TEMPLATE))?)
+        .body(Body::from(GENERATOR_TEMPLATE))?)
 }
 
-async fn handle_form_submit(req: Request) -> Result<Response<Body>, Error> {
-    let body = req.into_body();
-    let params = url::form_urlencoded::parse(&body).collect::<HashMap<_, _>>();
+fn parse_stats_params(req: &Request) -> Result<StatsParams, Error> {
+    let url = Url::parse(&req.uri().to_string())?;
+    let query: Query<'_> = url.query_pairs().collect();
 
-    let username = params
-        .get("username")
-        .ok_or_else(|| anyhow!("username not found"))?;
-    let max_repos = params
-        .get("max_repos")
-        .filter(|v| !v.is_empty())
-        .map(|v| format!("?max_repos={}", v))
-        .unwrap_or_default();
-
-    // Redirect to /<username>?max_repos=X
-    Ok(Response::builder()
-        .status(StatusCode::FOUND)
-        .header("Location", format!("/{}{}", username, max_repos))
-        .body(Body::Empty)?)
+    Ok(StatsParams {
+        max_repos: parse_optional_usize(&query, "max_repos")?,
+        min_stars: parse_u32(&query, "min_stars")?,
+        min_forks: parse_u32(&query, "min_forks")?,
+        show_header: parse_bool(&query, "show_header")?,
+    })
 }
 
-async fn render_stats_page(username: String, req: &Request) -> Result<Response<Body>, Error> {
-    let url = Url::parse(&req.uri().to_string()).unwrap();
-    let query: HashMap<_, _> = url.query_pairs().collect();
-    let max_repos_param = query
-        .get("max_repos")
-        .map(|v| format!("?max_repos={}", v))
-        .unwrap_or_default();
+fn parse_optional_usize(query: &Query<'_>, name: &str) -> Result<Option<usize>, Error> {
+    query
+        .get(name)
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            value
+                .parse()
+                .map_err(|_| anyhow!("{} must be a positive integer", name).into())
+        })
+        .transpose()
+}
 
-    let origin = url.origin().ascii_serialization();
-    let created_url = format!("{}/{}/created.svg{}", origin, username, max_repos_param);
-    let contributed_url = format!("{}/{}/contributed.svg{}", origin, username, max_repos_param);
+fn parse_u32(query: &Query<'_>, name: &str) -> Result<u32, Error> {
+    query
+        .get(name)
+        .filter(|value| !value.is_empty())
+        .map_or(Ok(0), |value| {
+            value
+                .parse()
+                .map_err(|_| anyhow!("{} must be a non-negative integer", name).into())
+        })
+}
 
-    let result_html = STATS_TEMPLATE
-        .replace("{username}", &username)
-        .replace("{created_url}", &created_url)
-        .replace("{contributed_url}", &contributed_url);
+fn parse_bool(query: &Query<'_>, name: &str) -> Result<bool, Error> {
+    match query.get(name).map(Cow::as_ref) {
+        None | Some("") | Some("1") | Some("true") => Ok(true),
+        Some("0") | Some("false") => Ok(false),
+        Some(_) => Err(anyhow!("{} must be true or false", name).into()),
+    }
+}
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "text/html; charset=utf-8")
-        .body(Body::from(result_html))?)
+fn filter_created_repos(mut repos: Vec<Repository>, params: StatsParams) -> Vec<Repository> {
+    repos.retain(|repo| {
+        repo.stargazer_count >= params.min_stars && repo.fork_count >= params.min_forks
+    });
+    if let Some(max_repos) = params.max_repos {
+        repos.truncate(max_repos);
+    }
+    repos
+}
+
+fn filter_contributed_repos(
+    mut repos: Vec<ContributedRepo>,
+    params: StatsParams,
+) -> Vec<ContributedRepo> {
+    repos.retain(|repo| repo.stargazer_count >= params.min_stars);
+    if let Some(max_repos) = params.max_repos {
+        repos.truncate(max_repos);
+    }
+    repos
 }
 
 async fn get_redis_client() -> Result<redis::Client, Error> {
@@ -161,21 +203,17 @@ where
 }
 
 async fn render_created_svg(username: String, req: &Request) -> Result<Response<Body>, Error> {
-    let url = Url::parse(&req.uri().to_string())?;
-    let query: HashMap<_, _> = url.query_pairs().collect();
-    let max_repos = query
-        .get("max_repos")
-        .map(|x| x.parse::<usize>())
-        .transpose()?;
+    let params = parse_stats_params(req)?;
 
-    let cache_key = format!("created:{}:{:?}", username, max_repos);
-    let repos = get_cached_or_compute(&cache_key, || {
-        github::get_created_repos(&username, max_repos)
-    })
-    .await?;
+    let cache_key = format!("created:{}:all", username);
+    let repos =
+        get_cached_or_compute(&cache_key, || github::get_created_repos(&username, None)).await?;
+    let repos = filter_created_repos(repos, params);
 
     let mut buf = String::new();
-    SvgRenderer::new().render_created_repos(&mut buf, &repos, &username);
+    SvgRenderer::new()
+        .with_header(params.show_header)
+        .render_created_repos(&mut buf, &repos, &username);
 
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -189,21 +227,19 @@ async fn render_created_svg(username: String, req: &Request) -> Result<Response<
 }
 
 async fn render_contributed_svg(username: String, req: &Request) -> Result<Response<Body>, Error> {
-    let url = Url::parse(&req.uri().to_string())?;
-    let query: HashMap<_, _> = url.query_pairs().collect();
-    let max_repos = query
-        .get("max_repos")
-        .map(|x| x.parse::<usize>())
-        .transpose()?;
+    let params = parse_stats_params(req)?;
 
-    let cache_key = format!("contributed:{}:{:?}", username, max_repos);
+    let cache_key = format!("contributed:{}:all", username);
     let repos = get_cached_or_compute(&cache_key, || {
-        github::get_contributed_repos(&username, max_repos)
+        github::get_contributed_repos(&username, None)
     })
     .await?;
+    let repos = filter_contributed_repos(repos, params);
 
     let mut buf = String::new();
-    SvgRenderer::new().render_contributed_repos(&mut buf, &repos, &username);
+    SvgRenderer::new()
+        .with_header(params.show_header)
+        .render_contributed_repos(&mut buf, &repos, &username);
 
     Ok(Response::builder()
         .status(StatusCode::OK)

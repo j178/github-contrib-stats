@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>GitHub Contribution Stats</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #ffffff;
+            --surface: #f6f8fa;
+            --surface-strong: #eef2f6;
+            --text: #24292f;
+            --muted: #57606a;
+            --line: #d8dee4;
+            --accent: #0969da;
+            --accent-strong: #0550ae;
+            --success: #1f883d;
+            --danger: #cf222e;
+            --shadow: 0 16px 40px rgba(31, 35, 40, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.5;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .page {
+            width: min(94vw, 1760px);
+            margin: 0 auto;
+            padding: 1.5rem 0 3rem;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--text);
+            font-size: clamp(1.55rem, 2.5vw, 2.25rem);
+            font-weight: 750;
+            letter-spacing: 0;
+        }
+
+        h2 {
+            margin: 0 0 0.75rem;
+            color: var(--text);
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .github-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-height: 2.4rem;
+            padding: 0.5rem 0.8rem;
+            border-radius: 6px;
+            background: #24292f;
+            color: #ffffff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .github-button:hover {
+            background: #000000;
+            text-decoration: none;
+        }
+
+        .github-icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .generator {
+            display: grid;
+            grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(120px, 0.7fr)) auto auto;
+            gap: 0.75rem;
+            align-items: end;
+            margin-bottom: 1.4rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: var(--shadow);
+        }
+
+        .field {
+            min-width: 0;
+        }
+
+        .field label,
+        .toggle-label {
+            display: block;
+            margin-bottom: 0.35rem;
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .field input[type="text"],
+        .field input[type="number"] {
+            width: 100%;
+            min-height: 2.55rem;
+            padding: 0.5rem 0.65rem;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: #ffffff;
+            color: var(--text);
+        }
+
+        .field input[type="text"]:hover,
+        .field input[type="number"]:hover {
+            border-color: var(--line);
+        }
+
+        .toggle-field {
+            align-self: stretch;
+            display: grid;
+            align-content: end;
+        }
+
+        .toggle-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            min-height: 2.55rem;
+            padding: 0.45rem 0.65rem;
+            border-radius: 6px;
+            background: #ffffff;
+            color: var(--text);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-control input {
+            width: 1rem;
+            height: 1rem;
+            margin: 0;
+            accent-color: var(--accent);
+        }
+
+        .generate-button,
+        .copy-button,
+        .retry-button {
+            border: 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .generate-button {
+            min-height: 2.55rem;
+            padding: 0.55rem 1rem;
+            background: var(--success);
+            color: #ffffff;
+            white-space: nowrap;
+        }
+
+        .generate-button:hover:not(:disabled) {
+            background: #116329;
+        }
+
+        .generate-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        .form-error {
+            grid-column: 1 / -1;
+            display: none;
+            margin: -0.2rem 0 0;
+            color: var(--danger);
+            font-size: 0.9rem;
+        }
+
+        .form-error[data-visible="true"] {
+            display: block;
+        }
+
+        .empty-state {
+            display: grid;
+            min-height: 22rem;
+            place-items: center;
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .empty-state strong {
+            display: block;
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .result-title {
+            margin: 0;
+            font-size: clamp(1.35rem, 2vw, 1.8rem);
+        }
+
+        .page-url {
+            max-width: min(720px, 55vw);
+            overflow: hidden;
+            color: var(--muted);
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.78rem;
+            text-align: right;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 2rem;
+        }
+
+        .stats-column {
+            min-width: 0;
+        }
+
+        .embed-card {
+            margin: 0.75rem 0 1rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: var(--surface);
+        }
+
+        .embed-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .format-tabs {
+            display: inline-flex;
+            gap: 0.125rem;
+            padding: 0.125rem;
+            border-radius: 6px;
+            background: var(--surface-strong);
+        }
+
+        .format-tab {
+            border: 0;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.85rem;
+            line-height: 1;
+            padding: 0.45rem 0.65rem;
+        }
+
+        .format-tab[aria-pressed="true"] {
+            background: var(--accent);
+            color: #ffffff;
+        }
+
+        .copy-button {
+            min-width: 4.5rem;
+            padding: 0.575rem 0.8rem;
+            background: #24292f;
+            color: #ffffff;
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+        .copy-button:hover:not(:disabled) {
+            background: #000000;
+        }
+
+        .copy-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        .snippet-box {
+            min-height: 3.25rem;
+            margin: 0;
+            padding: 0.75rem;
+            overflow-x: auto;
+            border-radius: 6px;
+            background: #ffffff;
+            color: var(--text);
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.85rem;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .copy-state {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .svg-container {
+            position: relative;
+            max-width: 100%;
+            min-height: 280px;
+            overflow: auto;
+            border-radius: 8px;
+            background: var(--surface);
+        }
+
+        .svg-container[data-state="loading"],
+        .svg-container[data-state="error"],
+        .svg-container[data-state="idle"] {
+            display: grid;
+            place-items: center;
+            padding: 1rem;
+        }
+
+        .svg-container[data-state="loaded"] {
+            padding: 0;
+            background: transparent;
+        }
+
+        .svg-container > svg {
+            display: block;
+            width: 100%;
+            min-width: 720px;
+            height: auto;
+        }
+
+        .svg-status {
+            display: grid;
+            justify-items: center;
+            gap: 0.75rem;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .svg-status strong {
+            display: block;
+            color: var(--text);
+            font-size: 0.95rem;
+            margin-bottom: 0.125rem;
+        }
+
+        .spinner {
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid var(--line);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .retry-button {
+            padding: 0.45rem 0.8rem;
+            background: var(--surface-strong);
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .retry-button:hover {
+            background: var(--line);
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .generator {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 860px) {
+            .page {
+                width: min(94vw, 780px);
+            }
+
+            .topbar,
+            .result-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .page-url {
+                max-width: 100%;
+                text-align: left;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .page {
+                padding-top: 1rem;
+            }
+
+            .generator {
+                grid-template-columns: 1fr;
+                padding: 0.85rem;
+            }
+
+            .embed-toolbar {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .format-tabs {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                width: 100%;
+            }
+
+            .copy-button,
+            .generate-button {
+                width: 100%;
+            }
+
+            .snippet-box {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+    <script>
+        const USERNAME_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
+
+        function byId(id) {
+            return document.getElementById(id);
+        }
+
+        function normalizeUsername(value) {
+            return value.trim().replace(/^@+/, '');
+        }
+
+        function readNumberParam(id, label, min) {
+            const value = byId(id).value.trim();
+            if (!value) {
+                return null;
+            }
+
+            const number = Number(value);
+            if (!Number.isInteger(number) || number < min) {
+                throw new Error(`${label} must be ${min > 0 ? 'a positive' : 'a non-negative'} integer.`);
+            }
+            return String(number);
+        }
+
+        function readFormParams() {
+            const username = normalizeUsername(byId('username').value);
+            if (!username) {
+                throw new Error('Username is required.');
+            }
+            if (!USERNAME_PATTERN.test(username)) {
+                throw new Error('Username can contain letters, numbers, and single hyphens.');
+            }
+
+            const params = new URLSearchParams({ username });
+            const maxRepos = readNumberParam('max_repos', 'Top repos', 1);
+            const minStars = readNumberParam('min_stars', 'Min stars', 0);
+            const minForks = readNumberParam('min_forks', 'Min forks', 0);
+
+            if (maxRepos) {
+                params.set('max_repos', maxRepos);
+            }
+            if (minStars && minStars !== '0') {
+                params.set('min_stars', minStars);
+            }
+            if (minForks && minForks !== '0') {
+                params.set('min_forks', minForks);
+            }
+            if (!byId('show_header').checked) {
+                params.set('show_header', '0');
+            }
+
+            return params;
+        }
+
+        function currentParams() {
+            const params = new URLSearchParams(window.location.search);
+            const username = normalizeUsername(params.get('username') || '');
+            if (!username) {
+                return null;
+            }
+            params.set('username', username);
+            return params;
+        }
+
+        function pageUrl(params) {
+            return `${window.location.origin}/?${params}`;
+        }
+
+        function svgUrl(kind, params) {
+            const svgParams = new URLSearchParams(params);
+            const username = svgParams.get('username');
+            svgParams.delete('username');
+            if (kind === 'contributed') {
+                svgParams.delete('min_forks');
+            }
+
+            const query = svgParams.toString();
+            return `${window.location.origin}/${encodeURIComponent(username)}/${kind}.svg${query ? `?${query}` : ''}`;
+        }
+
+        function syncForm(params) {
+            byId('username').value = params?.get('username') || '';
+            byId('max_repos').value = params?.get('max_repos') || '';
+            byId('min_stars').value = params?.get('min_stars') || '';
+            byId('min_forks').value = params?.get('min_forks') || '';
+            byId('show_header').checked = params?.get('show_header') !== '0';
+            updateGenerateButton();
+        }
+
+        function showError(message) {
+            const error = byId('form-error');
+            error.textContent = message;
+            error.dataset.visible = message ? 'true' : 'false';
+        }
+
+        function updateGenerateButton() {
+            byId('generate-button').disabled = normalizeUsername(byId('username').value) === '';
+        }
+
+        function renderIdle() {
+            byId('empty-state').hidden = false;
+            byId('result-area').hidden = true;
+            document.title = 'GitHub Contribution Stats';
+        }
+
+        function renderLoading(container, label) {
+            container.dataset.state = 'loading';
+            container.setAttribute('aria-busy', 'true');
+            container.innerHTML = `
+                <div class="svg-status" role="status" aria-live="polite">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span>
+                        <strong>Loading ${label}</strong>
+                        <span>Fetching SVG</span>
+                    </span>
+                </div>
+            `;
+        }
+
+        function renderError(container, label, retry) {
+            container.dataset.state = 'error';
+            container.removeAttribute('aria-busy');
+            container.innerHTML = `
+                <div class="svg-status" role="alert">
+                    <strong>Could not load ${label}</strong>
+                    <span>Check the username or try again.</span>
+                    <button class="retry-button" type="button">Retry</button>
+                </div>
+            `;
+            container.querySelector('button').addEventListener('click', retry);
+        }
+
+        async function loadSVG(url, containerId, label) {
+            const container = byId(containerId);
+            renderLoading(container, label);
+
+            try {
+                const response = await fetch(url, { headers: { Accept: 'image/svg+xml' } });
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+                const svgText = await response.text();
+                if (!svgText.trim().startsWith('<svg')) {
+                    throw new Error('Response was not an SVG document');
+                }
+                container.innerHTML = svgText;
+                container.dataset.state = 'loaded';
+                container.removeAttribute('aria-busy');
+
+                const svg = container.querySelector('svg');
+                if (svg && !svg.getAttribute('aria-label')) {
+                    svg.setAttribute('role', 'img');
+                    svg.setAttribute('aria-label', label);
+                }
+            } catch (error) {
+                console.error('Error loading SVG:', error);
+                renderError(container, label, () => loadSVG(url, containerId, label));
+            }
+        }
+
+        function escapeHtmlAttribute(value) {
+            return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        }
+
+        function getSnippet(card, format) {
+            const url = card.dataset.url || '';
+            const label = card.dataset.label;
+            if (!url) {
+                return '';
+            }
+            if (format === 'html') {
+                return `<a href="${escapeHtmlAttribute(url)}">${label}</a>`;
+            }
+            if (format === 'url') {
+                return url;
+            }
+            return `![${label}](${url})`;
+        }
+
+        function updateSnippet(card, format) {
+            const selectedFormat = format || card.dataset.format || 'markdown';
+            card.dataset.format = selectedFormat;
+            card.querySelector('code').textContent = getSnippet(card, selectedFormat);
+
+            card.querySelectorAll('.format-tab').forEach((tab) => {
+                const selected = tab.dataset.format === selectedFormat;
+                tab.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+
+            const copyButton = card.querySelector('.copy-button');
+            copyButton.textContent = 'Copy';
+            copyButton.disabled = !card.dataset.url;
+            card.querySelector('.copy-state').textContent = '';
+        }
+
+        function selectFormat(button) {
+            updateSnippet(button.closest('.embed-card'), button.dataset.format);
+        }
+
+        function setupSnippetCards() {
+            document.querySelectorAll('.embed-card').forEach((card) => {
+                updateSnippet(card, card.dataset.format);
+            });
+        }
+
+        function renderParams(params, { push = false, sync = false } = {}) {
+            const url = pageUrl(params);
+            const username = params.get('username');
+            const createdUrl = svgUrl('created', params);
+            const contributedUrl = svgUrl('contributed', params);
+
+            showError('');
+            if (push && url !== window.location.href) {
+                window.history.pushState(null, '', url);
+            }
+            if (sync) {
+                syncForm(params);
+            }
+
+            document.title = `GitHub Stats for ${username}`;
+            byId('empty-state').hidden = true;
+            byId('result-area').hidden = false;
+            byId('profile-link').href = `https://github.com/${encodeURIComponent(username)}`;
+            byId('profile-link').textContent = username;
+            byId('page-url').textContent = url;
+
+            const createdCard = document.querySelector('[data-kind="created"]');
+            const contributedCard = document.querySelector('[data-kind="contributed"]');
+            createdCard.dataset.url = createdUrl;
+            contributedCard.dataset.url = contributedUrl;
+            updateSnippet(createdCard, createdCard.dataset.format);
+            updateSnippet(contributedCard, contributedCard.dataset.format);
+
+            loadSVG(createdUrl, 'created-svg', 'created repositories');
+            loadSVG(contributedUrl, 'contributed-svg', 'contributed repositories');
+        }
+
+        function submitGenerator(event) {
+            event.preventDefault();
+            try {
+                renderParams(readFormParams(), { push: true });
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function copySnippet(button) {
+            const card = button.closest('.embed-card');
+            const text = card.querySelector('code').textContent.trim();
+            const state = card.querySelector('.copy-state');
+            if (!text) {
+                return;
+            }
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.setAttribute('readonly', '');
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    textarea.remove();
+                }
+                button.textContent = 'Copied';
+                state.textContent = 'Copied';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                    state.textContent = '';
+                }, 2000);
+            } catch (error) {
+                console.error('Error copying snippet:', error);
+                button.textContent = 'Failed';
+                state.textContent = 'Copy failed';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const form = byId('generator-form');
+            form.addEventListener('submit', submitGenerator);
+            form.addEventListener('input', updateGenerateButton);
+            setupSnippetCards();
+
+            const params = currentParams();
+            if (params) {
+                renderParams(params, { sync: true });
+            } else {
+                syncForm(null);
+                renderIdle();
+            }
+        });
+
+        window.addEventListener('popstate', () => {
+            const params = currentParams();
+            if (params) {
+                renderParams(params, { sync: true });
+            } else {
+                syncForm(null);
+                renderIdle();
+            }
+        });
+    </script>
+</head>
+<body>
+    <main class="page">
+        <div class="topbar">
+            <h1>GitHub Contribution Stats</h1>
+            <a href="https://github.com/j178/github-contrib-stats" class="github-button" target="_blank" rel="noopener noreferrer">
+                <svg class="github-icon" viewBox="0 0 16 16" version="1.1" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+                Star on GitHub
+            </a>
+        </div>
+
+        <form id="generator-form" class="generator" novalidate>
+            <div class="field">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" autocomplete="username" spellcheck="false" placeholder="j178" required>
+            </div>
+            <div class="field">
+                <label for="max_repos">Top repos</label>
+                <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All">
+            </div>
+            <div class="field">
+                <label for="min_stars">Min stars</label>
+                <input type="number" id="min_stars" name="min_stars" min="0" step="1" inputmode="numeric" placeholder="0">
+            </div>
+            <div class="field">
+                <label for="min_forks">Min forks</label>
+                <input type="number" id="min_forks" name="min_forks" min="0" step="1" inputmode="numeric" placeholder="0">
+            </div>
+            <div class="toggle-field">
+                <span class="toggle-label">Header</span>
+                <label class="toggle-control" for="show_header">
+                    <input type="checkbox" id="show_header" name="show_header" checked>
+                    Show
+                </label>
+            </div>
+            <button id="generate-button" type="submit" class="generate-button">Generate</button>
+            <p id="form-error" class="form-error" role="alert"></p>
+        </form>
+
+        <div id="empty-state" class="empty-state">
+            <div>
+                <strong>No profile generated</strong>
+                <span>Ready</span>
+            </div>
+        </div>
+
+        <section id="result-area" hidden>
+            <div class="result-header">
+                <h2 class="result-title">GitHub Stats for <a id="profile-link" href="#" target="_blank" rel="noopener noreferrer"></a></h2>
+                <div id="page-url" class="page-url" aria-label="Generated page URL"></div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stats-column">
+                    <h2>Created Repositories</h2>
+                    <div class="embed-card" data-kind="created" data-format="markdown" data-label="Repos I created">
+                        <div class="embed-toolbar">
+                            <div class="format-tabs" role="group" aria-label="Created repositories snippet format">
+                                <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
+                                <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
+                                <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
+                            </div>
+                            <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
+                        </div>
+                        <pre class="snippet-box"><code></code></pre>
+                        <span class="copy-state" aria-live="polite"></span>
+                    </div>
+                    <div id="created-svg" class="svg-container" data-state="idle"></div>
+                </div>
+
+                <div class="stats-column">
+                    <h2>Contributed Repositories</h2>
+                    <div class="embed-card" data-kind="contributed" data-format="markdown" data-label="Repos I contributed to">
+                        <div class="embed-toolbar">
+                            <div class="format-tabs" role="group" aria-label="Contributed repositories snippet format">
+                                <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
+                                <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
+                                <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
+                            </div>
+                            <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
+                        </div>
+                        <pre class="snippet-box"><code></code></pre>
+                        <span class="copy-state" aria-live="polite"></span>
+                    </div>
+                    <div id="contributed-svg" class="svg-container" data-state="idle"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
