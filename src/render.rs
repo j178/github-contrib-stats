@@ -22,6 +22,8 @@ static MARKDOWN_TABLE: LazyLock<TableFormat> = LazyLock::new(|| {
         .build()
 });
 
+const SVG_WIDTH: i32 = 860;
+
 pub trait Render {
     fn render_created_repos(&self, output: &mut String, repos: &[Repository], author: &str);
     fn render_contributed_repos(
@@ -137,8 +139,6 @@ pub struct SvgRenderer {
     fork_color: String,
     pr_color: String,
     total_row_bg: String,
-    title_color: String,
-    show_header: bool,
 }
 
 impl Default for SvgRenderer {
@@ -160,35 +160,18 @@ impl SvgRenderer {
             fork_color: "#10B981".to_string(),   // Emerald for forks
             pr_color: "#2DA44E".to_string(),     // GitHub PR green
             total_row_bg: "#E2E8F0".to_string(), // Cool gray for total
-            title_color: "#1E293B".to_string(),  // Dark slate for title
-            show_header: true,
         }
     }
 
-    pub fn with_header(mut self, show_header: bool) -> Self {
-        self.show_header = show_header;
-        self
-    }
-
-    fn create_title(&self, x: i32, y: i32, content: &str) -> Text {
-        Text::new(content)
-            .set("x", x)
-            .set("y", y)
-            .set("fill", self.title_color.as_str())
-            .set("font-family", self.font_family.as_str())
-            .set("font-size", 20)
-            .set("font-weight", "bold")
-    }
-
-    fn create_subtitle(&self, x: i32, y: i32, content: &str) -> Text {
+    fn create_timestamp(&self, x: i32, y: i32, content: &str) -> Text {
         Text::new(content)
             .set("x", x)
             .set("y", y)
             .set("fill", self.text_color.as_str())
             .set("font-family", self.font_family.as_str())
             .set("font-size", 12)
-            .set("font-style", "italic")
-            .set("text-anchor", "end") // Right align the text
+            .set("text-anchor", "end")
+            .set("dominant-baseline", "middle")
     }
 
     fn get_language_icon(
@@ -481,28 +464,19 @@ impl SvgRenderer {
 }
 
 impl Render for SvgRenderer {
-    fn render_created_repos(&self, output: &mut String, repos: &[Repository], author: &str) {
-        // Approximate width based on character count (assuming average char width is 8px)
-        let name_width = repos
-            .iter()
-            .map(|repo| repo.name().len())
-            .max()
-            .unwrap_or(20) as i32
-            * 8
-            + 20; // Add some padding
-        let name_width = name_width.clamp(160, 400);
+    fn render_created_repos(&self, output: &mut String, repos: &[Repository], _author: &str) {
         let col_widths = [
-            50,         // No.
-            name_width, // Name
-            140,        // Language
-            120,        // Stars (including space for fire emoji)
-            100,        // Forks
-            120,        // Last Update
+            50,  // No.
+            330, // Name
+            140, // Language
+            120, // Stars (including space for fire emoji)
+            100, // Forks
+            120, // Last Update
         ];
         let row_height = 40;
-        let header_height = if self.show_header { 50 } else { 0 };
-        let total_width = col_widths.iter().sum();
-        let total_height = header_height + (repos.len() as i32 + 2) * row_height;
+        let metadata_height = 28;
+        let total_width = SVG_WIDTH;
+        let total_height = metadata_height + (repos.len() as i32 + 2) * row_height;
 
         let mut document = Document::new()
             .set("style", "background-color: white")
@@ -514,18 +488,17 @@ impl Render for SvgRenderer {
         // Add definitions with all language icons
         document = document.add(self.create_language_defs(&languages));
 
-        if self.show_header {
-            document =
-                document.add(self.create_title(10, 30, &format!("Repos Created by {author}")));
-
-            let current_date = Local::now().format("%Y-%m-%d").to_string();
-            document = document.add(self.create_subtitle(total_width - 10, 30, &current_date));
-        }
+        let current_date = Local::now().format("%Y-%m-%d").to_string();
+        document = document.add(self.create_timestamp(
+            total_width - 10,
+            metadata_height / 2,
+            &format!("Updated {current_date}"),
+        ));
 
         // Header row
         document = document.add(self.create_rect(
             0,
-            header_height,
+            metadata_height,
             total_width,
             row_height,
             &self.header_bg,
@@ -536,12 +509,12 @@ impl Render for SvgRenderer {
         let mut x = 10;
         for (i, header) in headers.iter().enumerate() {
             document =
-                document.add(self.create_header_text(x, header_height + row_height / 2, header));
+                document.add(self.create_header_text(x, metadata_height + row_height / 2, header));
             x += col_widths[i];
         }
 
         // Data rows
-        let mut y = header_height + row_height;
+        let mut y = metadata_height + row_height;
         for (id, repo) in repos.iter().enumerate() {
             let bg_color = if id % 2 == 0 {
                 &self.row_bg_even
@@ -661,26 +634,18 @@ impl Render for SvgRenderer {
         repos: &[ContributedRepo],
         author: &str,
     ) {
-        let name_width = repos
-            .iter()
-            .map(|repo| repo.full_name.len())
-            .max()
-            .unwrap_or(20) as i32
-            * 8
-            + 20;
-        let name_width = name_width.clamp(160, 400);
         let col_widths = [
-            50,         // No.
-            name_width, // Name
-            120,        // Stars
-            120,        // First PR
-            120,        // Last PR
-            100,        // PR Count
+            50,  // No.
+            350, // Name
+            120, // Stars
+            120, // First PR
+            120, // Last PR
+            100, // PR Count
         ];
         let row_height = 40;
-        let header_height = if self.show_header { 50 } else { 0 };
-        let total_width = col_widths.iter().sum();
-        let total_height = header_height + (repos.len() as i32 + 2) * row_height;
+        let metadata_height = 28;
+        let total_width = SVG_WIDTH;
+        let total_height = metadata_height + (repos.len() as i32 + 2) * row_height;
 
         let mut document = Document::new()
             .set("style", "background-color: white")
@@ -688,18 +653,17 @@ impl Render for SvgRenderer {
             .set("preserveAspectRatio", "xMidYMin meet")
             .set("viewBox", format!("0 0 {total_width} {total_height}"));
 
-        if self.show_header {
-            document =
-                document.add(self.create_title(10, 30, &format!("Repos {author} Contributed To")));
-
-            let current_date = Local::now().format("%Y-%m-%d").to_string();
-            document = document.add(self.create_subtitle(total_width - 10, 30, &current_date));
-        }
+        let current_date = Local::now().format("%Y-%m-%d").to_string();
+        document = document.add(self.create_timestamp(
+            total_width - 10,
+            metadata_height / 2,
+            &format!("Updated {current_date}"),
+        ));
 
         // Header row
         document = document.add(self.create_rect(
             0,
-            header_height,
+            metadata_height,
             total_width,
             row_height,
             &self.header_bg,
@@ -710,12 +674,12 @@ impl Render for SvgRenderer {
         let mut x = 10;
         for (i, header) in headers.iter().enumerate() {
             document =
-                document.add(self.create_header_text(x, header_height + row_height / 2, header));
+                document.add(self.create_header_text(x, metadata_height + row_height / 2, header));
             x += col_widths[i];
         }
 
         // Data rows
-        let mut y = header_height + row_height;
+        let mut y = metadata_height + row_height;
         for (id, repo) in repos.iter().enumerate() {
             let bg_color = if id % 2 == 0 {
                 &self.row_bg_even
@@ -954,13 +918,17 @@ mod tests {
     }
 
     #[test]
-    fn svg_renderer_can_hide_title_header() {
-        let renderer = SvgRenderer::new().with_header(false);
+    fn svg_renderers_use_same_viewbox_width() {
+        let renderer = SvgRenderer::new();
         let repos = vec![create_test_repo("repo-rust", "Rust", 10500, 500, false)];
+        let contributed_repos = vec![create_test_contributed_repo("org/repo1", 1000, 20)];
 
-        let mut output = String::new();
-        renderer.render_created_repos(&mut output, &repos, "test-user");
+        let mut created_output = String::new();
+        renderer.render_created_repos(&mut created_output, &repos, "test-user");
+        assert!(created_output.contains(r#"viewBox="0 0 860 "#));
 
-        assert!(!output.contains("Repos Created by test-user"));
+        let mut contributed_output = String::new();
+        renderer.render_contributed_repos(&mut contributed_output, &contributed_repos, "test-user");
+        assert!(contributed_output.contains(r#"viewBox="0 0 860 "#));
     }
 }

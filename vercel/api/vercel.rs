@@ -19,7 +19,6 @@ struct StatsParams {
     max_repos: Option<usize>,
     min_stars: u32,
     min_forks: u32,
-    show_header: bool,
 }
 
 #[tokio::main]
@@ -33,13 +32,13 @@ async fn main() -> Result<(), Error> {
             ("/", method) if method == "GET" => render_stats_page(),
             (path, method) if method == "GET" && path.ends_with("/created.svg") => {
                 match username_from_svg_path(path, "/created.svg") {
-                    Some(username) => render_created_svg(username.to_string(), &req).await,
+                    Some(username) => render_created_svg(username, &req).await,
                     None => not_found(),
                 }
             }
             (path, method) if method == "GET" && path.ends_with("/contributed.svg") => {
                 match username_from_svg_path(path, "/contributed.svg") {
-                    Some(username) => render_contributed_svg(username.to_string(), &req).await,
+                    Some(username) => render_contributed_svg(username, &req).await,
                     None => not_found(),
                 }
             }
@@ -100,7 +99,6 @@ fn parse_stats_params(req: &Request) -> Result<StatsParams, Error> {
         max_repos: parse_optional_usize(&query, "max_repos")?,
         min_stars: parse_u32(&query, "min_stars")?,
         min_forks: parse_u32(&query, "min_forks")?,
-        show_header: parse_bool(&query, "show_header")?,
     })
 }
 
@@ -125,14 +123,6 @@ fn parse_u32(query: &Query<'_>, name: &str) -> Result<u32, Error> {
                 .parse()
                 .map_err(|_| anyhow!("{} must be a non-negative integer", name).into())
         })
-}
-
-fn parse_bool(query: &Query<'_>, name: &str) -> Result<bool, Error> {
-    match query.get(name).map(Cow::as_ref) {
-        None | Some("") | Some("1") | Some("true") => Ok(true),
-        Some("0") | Some("false") => Ok(false),
-        Some(_) => Err(anyhow!("{} must be true or false", name).into()),
-    }
 }
 
 fn filter_created_repos(mut repos: Vec<Repository>, params: StatsParams) -> Vec<Repository> {
@@ -210,7 +200,7 @@ where
     }
 }
 
-async fn render_created_svg(username: String, req: &Request) -> Result<Response<Body>, Error> {
+async fn render_created_svg(username: &str, req: &Request) -> Result<Response<Body>, Error> {
     let params = parse_stats_params(req)?;
 
     let cache_key = format!("created:{}:all", username);
@@ -219,9 +209,7 @@ async fn render_created_svg(username: String, req: &Request) -> Result<Response<
     let repos = filter_created_repos(repos, params);
 
     let mut buf = String::new();
-    SvgRenderer::new()
-        .with_header(params.show_header)
-        .render_created_repos(&mut buf, &repos, &username);
+    SvgRenderer::new().render_created_repos(&mut buf, &repos, &username);
 
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -234,7 +222,7 @@ async fn render_created_svg(username: String, req: &Request) -> Result<Response<
         .body(buf.into())?)
 }
 
-async fn render_contributed_svg(username: String, req: &Request) -> Result<Response<Body>, Error> {
+async fn render_contributed_svg(username: &str, req: &Request) -> Result<Response<Body>, Error> {
     let params = parse_stats_params(req)?;
 
     let cache_key = format!("contributed:{}:all", username);
@@ -245,9 +233,7 @@ async fn render_contributed_svg(username: String, req: &Request) -> Result<Respo
     let repos = filter_contributed_repos(repos, params);
 
     let mut buf = String::new();
-    SvgRenderer::new()
-        .with_header(params.show_header)
-        .render_contributed_repos(&mut buf, &repos, &username);
+    SvgRenderer::new().render_contributed_repos(&mut buf, &repos, &username);
 
     Ok(Response::builder()
         .status(StatusCode::OK)

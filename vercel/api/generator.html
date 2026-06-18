@@ -108,7 +108,7 @@
 
         .generator {
             display: grid;
-            grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(120px, 0.7fr)) auto auto;
+            grid-template-columns: minmax(220px, 1fr) minmax(360px, 0.95fr) auto;
             gap: 0.75rem;
             align-items: end;
             margin-bottom: 1.4rem;
@@ -122,6 +122,15 @@
             min-width: 0;
         }
 
+        .filter-controls {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.45rem;
+            padding: 0.45rem;
+            border-radius: 8px;
+            background: var(--surface-strong);
+        }
+
         .label-row {
             display: flex;
             align-items: center;
@@ -129,8 +138,7 @@
             margin-bottom: 0.35rem;
         }
 
-        .field label,
-        .toggle-label {
+        .field label {
             display: block;
             margin-bottom: 0.35rem;
             color: var(--muted);
@@ -139,9 +147,16 @@
             text-transform: uppercase;
         }
 
-        .label-row label,
-        .label-row .toggle-label {
+        .label-row label {
             margin-bottom: 0;
+        }
+
+        .filter-field .label-row {
+            margin-bottom: 0.25rem;
+        }
+
+        .filter-field label {
+            font-size: 0.72rem;
         }
 
         .help-tip {
@@ -217,35 +232,16 @@
             color: var(--text);
         }
 
+        .filter-field input[type="number"] {
+            min-height: 2.2rem;
+            padding: 0.4rem 0.55rem;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+
         .field input[type="text"]:hover,
         .field input[type="number"]:hover {
             border-color: var(--line);
-        }
-
-        .toggle-field {
-            align-self: stretch;
-            display: grid;
-            align-content: end;
-        }
-
-        .toggle-control {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.55rem;
-            min-height: 2.55rem;
-            padding: 0.45rem 0.65rem;
-            border-radius: 6px;
-            background: #ffffff;
-            color: var(--text);
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .toggle-control input {
-            width: 1rem;
-            height: 1rem;
-            margin: 0;
-            accent-color: var(--accent);
         }
 
         .generate-button,
@@ -320,17 +316,6 @@
             align-items: center;
             gap: 0.75rem;
             min-width: 0;
-        }
-
-        .page-url {
-            max-width: min(720px, 55vw);
-            overflow: hidden;
-            color: var(--muted);
-            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 0.78rem;
-            text-align: right;
-            text-overflow: ellipsis;
-            white-space: nowrap;
         }
 
         .stats-grid {
@@ -570,11 +555,6 @@
                 flex-direction: column;
             }
 
-            .page-url {
-                max-width: 100%;
-                text-align: left;
-            }
-
             .result-actions {
                 align-items: flex-start;
                 flex-direction: column;
@@ -594,6 +574,10 @@
             .generator {
                 grid-template-columns: 1fr;
                 padding: 0.85rem;
+            }
+
+            .filter-controls {
+                grid-template-columns: 1fr;
             }
 
             .format-tabs {
@@ -665,9 +649,6 @@
             if (minForks && minForks !== '0') {
                 params.set('min_forks', minForks);
             }
-            if (!byId('show_header').checked) {
-                params.set('show_header', '0');
-            }
 
             return params;
         }
@@ -689,6 +670,7 @@
             }
 
             const params = new URLSearchParams(window.location.search);
+            params.delete('show_header');
             params.set('username', username);
             return params;
         }
@@ -718,7 +700,6 @@
             byId('max_repos').value = params?.get('max_repos') || '';
             byId('min_stars').value = params?.get('min_stars') || '';
             byId('min_forks').value = params?.get('min_forks') || '';
-            byId('show_header').checked = params?.get('show_header') !== '0';
             updateGenerateButton();
         }
 
@@ -891,7 +872,6 @@
             byId('result-area').hidden = false;
             byId('profile-link').href = `https://github.com/${encodeURIComponent(username)}`;
             byId('profile-link').textContent = username;
-            byId('page-url').textContent = url;
 
             const sharePanel = byId('share-panel');
             sharePanel.dataset.createdUrl = createdUrl;
@@ -987,38 +967,30 @@
         <form id="generator-form" class="generator" novalidate>
             <div class="field">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" autocomplete="username" spellcheck="false" required>
+                <input type="text" id="username" name="username" autocomplete="username" spellcheck="false" required autofocus>
             </div>
-            <div class="field">
-                <div class="label-row">
-                    <label for="max_repos">Top repos</label>
-                    <span class="help-tip" tabindex="0" data-tooltip="Maximum number of repositories shown after sorting and filtering. Leave empty to show all." aria-label="Maximum number of repositories shown after sorting and filtering. Leave empty to show all.">?</span>
+            <div class="filter-controls" aria-label="Repository filters">
+                <div class="field filter-field">
+                    <div class="label-row">
+                        <label for="max_repos">Top repos</label>
+                        <span class="help-tip" tabindex="0" data-tooltip="Maximum number of repositories shown after sorting and filtering. Leave empty to show all." aria-label="Maximum number of repositories shown after sorting and filtering. Leave empty to show all.">?</span>
+                    </div>
+                    <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All">
                 </div>
-                <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All">
-            </div>
-            <div class="field">
-                <div class="label-row">
-                    <label for="min_stars">Min stars</label>
-                    <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many stars." aria-label="Only show repositories with at least this many stars.">?</span>
+                <div class="field filter-field">
+                    <div class="label-row">
+                        <label for="min_stars">Min stars</label>
+                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many stars." aria-label="Only show repositories with at least this many stars.">?</span>
+                    </div>
+                    <input type="number" id="min_stars" name="min_stars" min="0" step="1" inputmode="numeric" placeholder="0">
                 </div>
-                <input type="number" id="min_stars" name="min_stars" min="0" step="1" inputmode="numeric" placeholder="0">
-            </div>
-            <div class="field">
-                <div class="label-row">
-                    <label for="min_forks">Min forks</label>
-                    <span class="help-tip" tabindex="0" data-tooltip="Only affects created repositories. Contributed repositories are filtered by stars and top count." aria-label="Only affects created repositories. Contributed repositories are filtered by stars and top count.">?</span>
+                <div class="field filter-field">
+                    <div class="label-row">
+                        <label for="min_forks">Min forks</label>
+                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many forks." aria-label="Only show repositories with at least this many forks.">?</span>
+                    </div>
+                    <input type="number" id="min_forks" name="min_forks" min="0" step="1" inputmode="numeric" placeholder="0">
                 </div>
-                <input type="number" id="min_forks" name="min_forks" min="0" step="1" inputmode="numeric" placeholder="0">
-            </div>
-            <div class="toggle-field">
-                <div class="label-row">
-                    <span class="toggle-label">Header</span>
-                    <span class="help-tip" tabindex="0" data-tooltip="Show or hide the SVG title and generated date. Table column headers stay visible." aria-label="Show or hide the SVG title and generated date. Table column headers stay visible.">?</span>
-                </div>
-                <label class="toggle-control" for="show_header">
-                    <input type="checkbox" id="show_header" name="show_header" checked>
-                    Show
-                </label>
             </div>
             <button id="generate-button" type="submit" class="generate-button">Generate</button>
             <p id="form-error" class="form-error" role="alert"></p>
@@ -1035,7 +1007,6 @@
             <div class="result-header">
                 <h2 class="result-title">GitHub Stats for <a id="profile-link" href="#" target="_blank" rel="noopener noreferrer"></a></h2>
                 <div class="result-actions">
-                    <div id="page-url" class="page-url" aria-label="Generated page URL"></div>
                     <button id="share-button" type="button" class="share-button" aria-controls="share-panel" aria-expanded="false" onclick="toggleSharePanel()">Share</button>
                 </div>
             </div>
