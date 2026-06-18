@@ -336,10 +336,25 @@
         }
 
         .stats-column > h2 {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
             margin-bottom: 0.3rem;
             color: var(--muted);
             font-size: 0.95rem;
             line-height: 1.2;
+        }
+
+        .section-icon {
+            width: 1rem;
+            height: 1rem;
+            color: var(--accent);
+            flex: 0 0 auto;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
         }
 
         .share-panel {
@@ -1074,12 +1089,28 @@
 
             <div class="stats-grid">
                 <div class="stats-column">
-                    <h2>Created Repositories</h2>
+                    <h2>
+                        <svg class="section-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 7.5h6l2 2h8"></path>
+                            <path d="M4 7.5v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                        </svg>
+                        Created Repositories
+                    </h2>
                     <div id="created-svg" class="svg-container" data-state="idle"></div>
                 </div>
 
                 <div class="stats-column">
-                    <h2>Contributed Repositories</h2>
+                    <h2>
+                        <svg class="section-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="6" cy="18" r="2"></circle>
+                            <circle cx="18" cy="6" r="2"></circle>
+                            <path d="M6 16V6"></path>
+                            <path d="M8 6h6"></path>
+                            <path d="M14 6l-2-2"></path>
+                            <path d="M14 6l-2 2"></path>
+                        </svg>
+                        Contributed Repositories
+                    </h2>
                     <div id="contributed-svg" class="svg-container" data-state="idle"></div>
                 </div>
             </div>
