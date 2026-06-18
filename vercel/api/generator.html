@@ -112,7 +112,7 @@
             gap: 0.75rem;
             align-items: stretch;
             margin-bottom: 1.4rem;
-            padding: 1rem;
+            padding: 1rem 1rem 0.75rem;
             border-radius: 8px;
             background: var(--surface);
             box-shadow: var(--shadow);
@@ -131,6 +131,10 @@
             display: flex;
             align-items: end;
             gap: 0.55rem;
+        }
+
+        .generator-actions > button {
+            width: 7rem;
         }
 
         .filter-controls {
@@ -578,7 +582,7 @@
 
             .generator {
                 grid-template-columns: 1fr;
-                padding: 0.85rem;
+                padding: 0.85rem 0.85rem 0.65rem;
             }
 
             .filter-controls {
@@ -588,6 +592,10 @@
             .generator-actions {
                 align-items: stretch;
                 flex-direction: column;
+            }
+
+            .generator-actions > button {
+                width: 100%;
             }
 
             .format-tabs {
@@ -815,13 +823,24 @@
             return kind === 'contributed' ? panel.dataset.contributedUrl : panel.dataset.createdUrl;
         }
 
-        function shareLabel(kind) {
-            return kind === 'contributed' ? 'Repos I contributed to' : 'Repos I created';
+        function usernameFromShareUrl(url) {
+            try {
+                const parsed = new URL(url);
+                return decodeURIComponent(parsed.pathname.split('/').filter(Boolean)[0] || '');
+            } catch {
+                return '';
+            }
+        }
+
+        function shareLabel(kind, url) {
+            const username = usernameFromShareUrl(url);
+            const action = kind === 'contributed' ? 'contributed to' : 'created';
+            return username ? `Repos ${action} by ${username}` : `Repos ${action}`;
         }
 
         function getSnippet(kind, format) {
             const url = shareUrl(kind);
-            const label = shareLabel(kind);
+            const label = shareLabel(kind, url);
             if (!url) {
                 return '';
             }

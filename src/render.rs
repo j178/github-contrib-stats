@@ -23,8 +23,8 @@ static MARKDOWN_TABLE: LazyLock<TableFormat> = LazyLock::new(|| {
 });
 
 const SVG_WIDTH: i32 = 780;
-const STATS_HEADER_HEIGHT: i32 = 42;
-const STATS_HEADER_ICON_SIZE: i32 = 18;
+const STATS_HEADER_HEIGHT: i32 = 50;
+const STATS_HEADER_ICON_SIZE: i32 = 20;
 const STATS_FOOTER_HEIGHT: i32 = 26;
 const GENERATOR_URL: &str = "http://github-contrib-stats.vercel.app/";
 const REPO_ICON_PATH: &str = "M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z";
@@ -157,7 +157,7 @@ impl SvgRenderer {
     pub fn new() -> Self {
         SvgRenderer {
             font_family: "Arial, sans-serif".to_string(),
-            header_bg: "#0F172A".to_string(),    // Dark blue header
+            header_bg: "#E8EEF6".to_string(),    // Soft cool header
             row_bg_even: "#ffffff".to_string(),  // White
             row_bg_odd: "#F1F5F9".to_string(),   // Light cool gray
             text_color: "#334155".to_string(),   // Slate gray
@@ -189,13 +189,13 @@ impl SvgRenderer {
             .add(
                 TSpan::new(title)
                     .set("fill", self.text_color.as_str())
-                    .set("font-size", 14)
+                    .set("font-size", 16)
                     .set("font-weight", "bold"),
             )
             .add(
                 TSpan::new(" by ")
                     .set("fill", self.text_color.as_str())
-                    .set("font-size", 13)
+                    .set("font-size", 14)
                     .set("opacity", 0.72),
             )
             .add(
@@ -205,7 +205,7 @@ impl SvgRenderer {
                     .add(
                         TSpan::new(username)
                             .set("fill", self.link_color.as_str())
-                            .set("font-size", 13)
+                            .set("font-size", 14)
                             .set("opacity", 0.85),
                     ),
             )
@@ -220,10 +220,10 @@ impl SvgRenderer {
         icon_path: &str,
     ) -> Group {
         let current_date = Local::now().format("%Y-%m-%d").to_string();
-        let baseline_y = height / 2 + 3;
+        let baseline_y = height / 2 + 5;
         let icon_scale = f64::from(STATS_HEADER_ICON_SIZE) / 16.0;
         let icon_y = baseline_y - STATS_HEADER_ICON_SIZE / 2;
-        let title_x = 34;
+        let title_x = 38;
         let timestamp_x = width - 10;
 
         Group::new()
@@ -536,7 +536,7 @@ impl SvgRenderer {
         Text::new(content)
             .set("x", x)
             .set("y", y)
-            .set("fill", "#ffffff") // White text for header
+            .set("fill", self.text_color.as_str())
             .set("font-family", self.font_family.as_str())
             .set("font-size", 14)
             .set("font-weight", "bold")
@@ -584,7 +584,7 @@ impl Render for SvgRenderer {
         document = document.add(self.create_stats_header(
             total_width,
             stats_header_height,
-            "Created Repositories",
+            "Repositories created",
             author,
             REPO_ICON_PATH,
         ));
@@ -758,7 +758,7 @@ impl Render for SvgRenderer {
         document = document.add(self.create_stats_header(
             total_width,
             stats_header_height,
-            "Contributed Repositories",
+            "Repositories contributed to",
             author,
             PULL_REQUEST_ICON_PATH,
         ));
