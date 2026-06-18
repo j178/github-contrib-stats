@@ -2,7 +2,7 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use base64::prelude::*;
 use chrono::{DateTime, Utc};
 use futures::future::join_all;
@@ -26,7 +26,7 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| {
     headers.insert(USER_AGENT, HeaderValue::from_static("github-contrib-stats"));
     headers.insert(
         AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", &token)).unwrap(),
+        HeaderValue::from_str(&format!("Bearer {token}")).unwrap(),
     );
 
     let mut builder = Client::builder().default_headers(headers);
@@ -104,18 +104,26 @@ struct RepositoryResult {
 }
 
 impl Repository {
+    #[must_use]
     pub fn name(&self) -> &str {
-        self.name_with_owner.split_once('/').unwrap().1
+        self.name_with_owner
+            .split_once('/')
+            .map_or(self.name_with_owner.as_str(), |(_, name)| name)
     }
 
+    #[must_use]
     pub fn owner(&self) -> &str {
-        self.name_with_owner.split_once('/').unwrap().0
+        self.name_with_owner
+            .split_once('/')
+            .map_or("", |(owner, _)| owner)
     }
 
+    #[must_use]
     pub fn html_url(&self) -> String {
         format!("https://github.com/{}", self.name_with_owner)
     }
 
+    #[must_use]
     pub fn language(&self) -> &str {
         self.primary_language
             .as_ref()
@@ -127,7 +135,7 @@ pub async fn get_created_repos(
     username: &str,
     max_repos: Option<usize>,
 ) -> Result<Vec<Repository>> {
-    info!("Fetching created repos for {}", username);
+    info!("Fetching created repos for {username}");
 
     let mut body = json!({
         "query": QUERY_REPOS,
@@ -142,7 +150,7 @@ pub async fn get_created_repos(
     let mut repos = Vec::new();
 
     while has_next_page {
-        info!("Fetching repos after {:?}", end_cursor);
+        info!("Fetching repos after {end_cursor:?}");
         body["variables"]["after"] = json!(end_cursor);
 
         let mut resp: Value = CLIENT
@@ -155,49 +163,17 @@ pub async fn get_created_repos(
             .json()
             .await?;
 
-        // Check for GraphQL errors
-        if let Some(errors) = resp.get("errors") {
-            if let Some(error) = errors.as_array().and_then(|arr| arr.first()) {
-                let error_type = error
-                    .get("type")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("UNKNOWN");
-                let message = error
-                    .get("message")
-                    .and_then(|m| m.as_str())
-                    .unwrap_or("Unknown error");
-
-                if error_type == "NOT_FOUND" {
-                    return Err(anyhow::anyhow!("User not found: {}", message));
-                } else {
-                    return Err(anyhow::anyhow!("GitHub API error: {}", message));
-                }
-            } else {
-                return Err(anyhow::anyhow!("GitHub API returned errors: {}", errors));
-            }
-        }
-
-        // Check if user data is null
-        if resp["data"]["user"].is_null() {
-            return Err(anyhow::anyhow!(
-                "User '{}' not found or is not a user account",
-                username
-            ));
-        }
+        check_graphql_errors(&resp)?;
+        check_user_exists(&resp, username)?;
 
         let repo_result: RepositoryResult =
-            serde_json::from_value(resp["data"]["user"]["repositories"].take())?;
+            serde_json::from_value(resp["data"]["user"]["repositories"].take())
+                .context("failed to decode GitHub GraphQL user.repositories response")?;
 
         has_next_page = repo_result.page_info.has_next_page;
         end_cursor = repo_result.page_info.end_cursor;
 
-        repos.extend(
-            repo_result
-                .edges
-                .into_iter()
-                .flatten()
-                .map(|edge| edge.node),
-        );
+        repos.extend(edge_nodes(repo_result.edges));
     }
 
     let mut repos: Vec<_> = repos
@@ -232,6 +208,59 @@ struct PageInfo {
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 struct Edge<T> {
     node: T,
+}
+
+fn edge_nodes<T>(edges: Vec<Option<Edge<T>>>) -> impl Iterator<Item = T> {
+    edges.into_iter().flatten().map(|Edge { node }| node)
+}
+
+fn check_graphql_errors(resp: &Value) -> Result<()> {
+    let Some(errors) = resp.get("errors") else {
+        return Ok(());
+    };
+
+    let Some(error) = errors.as_array().and_then(|arr| arr.first()) else {
+        return Err(anyhow::anyhow!("GitHub API returned errors: {errors}"));
+    };
+
+    let error_type = error
+        .get("type")
+        .and_then(|t| t.as_str())
+        .unwrap_or("UNKNOWN");
+    let message = error
+        .get("message")
+        .and_then(|m| m.as_str())
+        .unwrap_or("Unknown error");
+
+    if error_type == "NOT_FOUND" {
+        return Err(anyhow::anyhow!("User not found: {message}"));
+    }
+
+    Err(anyhow::anyhow!("GitHub API error: {message}"))
+}
+
+fn check_user_exists(resp: &Value, username: &str) -> Result<()> {
+    if resp["data"]["user"].is_null() {
+        return Err(anyhow::anyhow!(
+            "User '{username}' not found or is not a user account"
+        ));
+    }
+
+    Ok(())
+}
+
+fn repository_name_from_pull_request_url(url: &str) -> Option<String> {
+    let mut segments = url.rsplit('/');
+    let _pull_number = segments.next()?;
+    let pulls = segments.next()?;
+    let repo = segments.next()?;
+    let owner = segments.next()?;
+
+    if pulls != "pull" {
+        return None;
+    }
+
+    Some(format!("{owner}/{repo}"))
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -294,13 +323,16 @@ async fn get_one_page_of_pr(
         .json()
         .await?;
 
-    let result: PullRequestSearchResult = serde_json::from_value(data["data"]["search"].take())?;
+    check_graphql_errors(&data)?;
+
+    let result: PullRequestSearchResult = serde_json::from_value(data["data"]["search"].take())
+        .context("failed to decode GitHub GraphQL search response")?;
     Ok(result)
 }
 
-/// For one query, GitHub only returns up to 1000 results (MAX_RESULTS) at most, with a maximum of 100 results per page.
-/// This function fetches up to MAX_RESULTS PRs, paginating if necessary.
-/// For results beyond MAX_RESULTS, it will be fetched in subsequent queries with limited with the `created:<YYYY-MM-DD` filter.
+/// For one query, GitHub only returns up to 1000 results (`MAX_RESULTS`) at most, with a maximum of 100 results per page.
+/// This function fetches up to `MAX_RESULTS` PRs, paginating if necessary.
+/// For results beyond `MAX_RESULTS`, it will be fetched in subsequent queries with limited with the `created:<YYYY-MM-DD` filter.
 async fn get_all_pages_of_pr(body: Value, total: Option<u32>) -> Result<(u32, Vec<PullRequest>)> {
     let mut all_prs = Vec::new();
 
@@ -309,8 +341,8 @@ async fn get_all_pages_of_pr(body: Value, total: Option<u32>) -> Result<(u32, Ve
         (total_all_query, 0)
     } else {
         let result = get_one_page_of_pr(body.clone(), None).await?;
-        all_prs.extend(result.edges.into_iter().flatten().map(|edge| edge.node));
-        (result.issue_count, PER_PAGE as u32)
+        all_prs.extend(edge_nodes(result.edges));
+        (result.issue_count, u32::from(PER_PAGE))
     };
     let total_this_query = MAX_RESULTS.min(total_all_query);
 
@@ -319,22 +351,26 @@ async fn get_all_pages_of_pr(body: Value, total: Option<u32>) -> Result<(u32, Ve
         all_prs.reserve((total_this_query - beginning) as usize);
 
         // cursor begins with base64("cursor:1")
-        let futures = (beginning..total_this_query)
-            .step_by(100)
-            .map(|cursor| {
-                info!("fetching PRs after cursor: {}", cursor);
-                let cursor = BASE64_STANDARD.encode(format!("cursor:{cursor}"));
-                get_one_page_of_pr(body.clone(), Some(cursor))
-            })
-            .collect::<Vec<_>>();
+        let results = join_all(
+            (beginning..total_this_query)
+                .step_by(usize::from(PER_PAGE))
+                .map(|cursor_offset| {
+                    let page_body = body.clone();
 
-        let results = join_all(futures).await;
+                    async move {
+                        info!("fetching PRs after cursor: {cursor_offset}");
+                        let cursor = BASE64_STANDARD.encode(format!("cursor:{cursor_offset}"));
+                        get_one_page_of_pr(page_body, Some(cursor))
+                            .await
+                            .with_context(|| {
+                                format!("failed to fetch PR page after cursor {cursor_offset}")
+                            })
+                    }
+                }),
+        )
+        .await;
         for result in results {
-            if let Ok(result) = result {
-                all_prs.extend(result.edges.into_iter().flatten().map(|edge| edge.node));
-            } else {
-                error!("failed to fetch a page of PRs")
-            }
+            all_prs.extend(edge_nodes(result?.edges));
         }
     }
 
@@ -355,7 +391,7 @@ pub async fn get_contributed_repos(
     // https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
     // -user:USERNAME to exclude PRs from repos owned by USERNAME itself
 
-    info!("Fetching contributed repos for {}", username);
+    info!("Fetching contributed repos for {username}");
 
     let first_query =
         format!("author:{username} type:pr is:public sort:created-desc -user:{username}");
@@ -401,30 +437,31 @@ pub async fn get_contributed_repos(
         remaining_count = remaining_count.saturating_sub(MAX_RESULTS);
     }
 
-    // Group PRs by repo
-    let groups: HashMap<String, Vec<_>> =
-        all_prs.into_iter().fold(HashMap::new(), |mut groups, pr| {
-            let paths: Vec<_> = pr.url.split('/').collect();
-            let repo_name = format!("{}/{}", paths[paths.len() - 4], paths[paths.len() - 3]);
+    let mut groups: HashMap<String, Vec<_>> = HashMap::new();
+    for pr in all_prs {
+        let Some(repo_name) = repository_name_from_pull_request_url(&pr.url) else {
+            error!("failed to parse repository name from PR URL: {}", pr.url);
+            continue;
+        };
 
-            groups.entry(repo_name).or_default().push(pr);
-            groups
-        });
+        groups.entry(repo_name).or_default().push(pr);
+    }
 
-    // Transform groups into ContributedRepo
     let mut repos: Vec<_> = groups
         .into_iter()
-        .map(|(repo_name, mut prs)| {
+        .filter_map(|(repo_name, mut prs)| {
             prs.sort_by(|a, b| a.created_at.cmp(&b.created_at));
-            let first_pr = prs.first().unwrap();
-            let last_pr = prs.last().unwrap();
-            ContributedRepo {
+            let first_pr = prs.first()?.clone();
+            let last_pr = prs.last()?.clone();
+            let pr_count = u32::try_from(prs.len()).ok()?;
+
+            Some(ContributedRepo {
                 full_name: repo_name,
                 stargazer_count: last_pr.repository.stargazer_count,
-                pr_count: prs.len() as u32,
-                first_pr: first_pr.clone(),
-                last_pr: last_pr.clone(),
-            }
+                pr_count,
+                first_pr,
+                last_pr,
+            })
         })
         .collect();
 
@@ -492,5 +529,23 @@ mod tests {
         .unwrap();
 
         assert_eq!(result.edges.into_iter().flatten().count(), 1);
+    }
+
+    #[test]
+    fn repository_name_from_pull_request_url_extracts_owner_and_repo() {
+        assert_eq!(
+            repository_name_from_pull_request_url("https://github.com/owner/repo/pull/42")
+                .as_deref(),
+            Some("owner/repo")
+        );
+    }
+
+    #[test]
+    fn repository_name_from_pull_request_url_rejects_invalid_url() {
+        assert_eq!(repository_name_from_pull_request_url("not-enough"), None);
+        assert_eq!(
+            repository_name_from_pull_request_url("https://github.com/owner/repo/issues/42"),
+            None
+        );
     }
 }

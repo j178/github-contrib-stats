@@ -147,9 +147,9 @@ where
                 && let Err(e) = conn
                     .set_ex::<_, _, ()>(cache_key, cached_data, 12 * 3600)
                     .await
-                {
-                    info!("Failed to store in cache: {}", e);
-                }
+            {
+                info!("Failed to store in cache: {}", e);
+            }
 
             Ok(value)
         }
