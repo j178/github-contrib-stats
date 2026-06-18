@@ -127,6 +127,12 @@
             align-content: end;
         }
 
+        .generator-actions {
+            display: flex;
+            align-items: end;
+            gap: 0.55rem;
+        }
+
         .filter-controls {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -313,26 +319,6 @@
             font-size: 1rem;
         }
 
-        .result-header {
-            display: flex;
-            align-items: end;
-            justify-content: space-between;
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-
-        .result-title {
-            margin: 0;
-            font-size: clamp(1.35rem, 2vw, 1.8rem);
-        }
-
-        .result-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            min-width: 0;
-        }
-
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -399,6 +385,11 @@
         .share-button:hover,
         .share-button[aria-expanded="true"] {
             background: var(--line);
+        }
+
+        .share-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
         }
 
         .share-list {
@@ -569,16 +560,9 @@
                 width: min(94vw, 780px);
             }
 
-            .topbar,
-            .result-header {
+            .topbar {
                 align-items: flex-start;
                 flex-direction: column;
-            }
-
-            .result-actions {
-                align-items: flex-start;
-                flex-direction: column;
-                width: 100%;
             }
 
             .stats-grid {
@@ -598,6 +582,11 @@
 
             .filter-controls {
                 grid-template-columns: 1fr;
+            }
+
+            .generator-actions {
+                align-items: stretch;
+                flex-direction: column;
             }
 
             .format-tabs {
@@ -741,9 +730,12 @@
         }
 
         function renderIdle() {
+            const sharePanel = byId('share-panel');
             byId('empty-state').hidden = false;
             byId('result-area').hidden = true;
-            byId('share-panel').hidden = true;
+            sharePanel.hidden = true;
+            delete sharePanel.dataset.createdUrl;
+            delete sharePanel.dataset.contributedUrl;
             updateShareButton(false);
             document.title = 'GitHub Contribution Stats';
         }
@@ -862,11 +854,18 @@
         }
 
         function updateShareButton(expanded) {
-            byId('share-button').setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            const panel = byId('share-panel');
+            const button = byId('share-button');
+            const hasShareUrls = Boolean(panel.dataset.createdUrl && panel.dataset.contributedUrl);
+            button.disabled = !hasShareUrls;
+            button.setAttribute('aria-expanded', expanded && hasShareUrls ? 'true' : 'false');
         }
 
         function toggleSharePanel() {
             const panel = byId('share-panel');
+            if (!panel.dataset.createdUrl || !panel.dataset.contributedUrl) {
+                return;
+            }
             panel.hidden = !panel.hidden;
             updateShareButton(!panel.hidden);
             updateSharePanel();
@@ -897,13 +896,12 @@
             document.title = `GitHub Stats for ${username}`;
             byId('empty-state').hidden = true;
             byId('result-area').hidden = false;
-            byId('profile-link').href = `https://github.com/${encodeURIComponent(username)}`;
-            byId('profile-link').textContent = username;
 
             const sharePanel = byId('share-panel');
             sharePanel.dataset.createdUrl = createdUrl;
             sharePanel.dataset.contributedUrl = contributedUrl;
             updateSharePanel();
+            updateShareButton(!sharePanel.hidden);
 
             loadSVG(createdUrl, 'created-svg', 'created repositories');
             loadSVG(contributedUrl, 'contributed-svg', 'contributed repositories');
@@ -1026,7 +1024,10 @@
                     <input type="number" id="min_prs" name="min_prs" min="0" step="1" inputmode="numeric" placeholder="0">
                 </div>
             </div>
-            <button id="generate-button" type="submit" class="generate-button">Generate</button>
+            <div class="generator-actions">
+                <button id="generate-button" type="submit" class="generate-button">Generate</button>
+                <button id="share-button" type="button" class="share-button" aria-controls="share-panel" aria-expanded="false" onclick="toggleSharePanel()" disabled>Share</button>
+            </div>
             <p id="form-error" class="form-error" role="alert"></p>
         </form>
 
@@ -1038,13 +1039,6 @@
         </div>
 
         <section id="result-area" hidden>
-            <div class="result-header">
-                <h2 class="result-title">GitHub Stats for <a id="profile-link" href="#" target="_blank" rel="noopener noreferrer"></a></h2>
-                <div class="result-actions">
-                    <button id="share-button" type="button" class="share-button" aria-controls="share-panel" aria-expanded="false" onclick="toggleSharePanel()">Share</button>
-                </div>
-            </div>
-
             <div id="share-panel" class="share-panel" data-format="markdown" hidden>
                 <div class="share-toolbar">
                     <div class="format-tabs" role="group" aria-label="Share format">

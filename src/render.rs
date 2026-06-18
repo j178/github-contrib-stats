@@ -179,41 +179,34 @@ impl SvgRenderer {
             .set("dominant-baseline", "middle")
     }
 
-    fn create_stats_header_title(&self, x: i32, y: i32, content: &str) -> Text {
-        Text::new(content)
+    fn create_stats_header_subject(&self, x: i32, y: i32, title: &str, username: &str) -> Text {
+        Text::new("")
             .set("x", x)
             .set("y", y)
-            .set("fill", self.text_color.as_str())
             .set("font-family", self.font_family.as_str())
-            .set("font-size", 13)
-            .set("font-weight", "bold")
             .set("dominant-baseline", "middle")
-    }
-
-    fn create_stats_header_by_text(&self, x: i32, y: i32) -> Text {
-        Text::new("by")
-            .set("x", x)
-            .set("y", y)
-            .set("fill", self.text_color.as_str())
-            .set("font-family", self.font_family.as_str())
-            .set("font-size", 12)
-            .set("opacity", 0.72)
-            .set("dominant-baseline", "middle")
-    }
-
-    fn create_stats_header_username_link(&self, x: i32, y: i32, username: &str) -> Anchor {
-        Anchor::new()
-            .set("href", format!("https://github.com/{username}"))
-            .set("target", "_blank")
             .add(
-                Text::new(username)
-                    .set("x", x)
-                    .set("y", y)
-                    .set("fill", self.link_color.as_str())
-                    .set("font-family", self.font_family.as_str())
+                TSpan::new(title)
+                    .set("fill", self.text_color.as_str())
+                    .set("font-size", 13)
+                    .set("font-weight", "bold"),
+            )
+            .add(
+                TSpan::new(" by ")
+                    .set("fill", self.text_color.as_str())
                     .set("font-size", 12)
-                    .set("opacity", 0.85)
-                    .set("dominant-baseline", "middle"),
+                    .set("opacity", 0.72),
+            )
+            .add(
+                Anchor::new()
+                    .set("href", format!("https://github.com/{username}"))
+                    .set("target", "_blank")
+                    .add(
+                        TSpan::new(username)
+                            .set("fill", self.link_color.as_str())
+                            .set("font-size", 12)
+                            .set("opacity", 0.85),
+                    ),
             )
     }
 
@@ -229,8 +222,6 @@ impl SvgRenderer {
         let icon_y = (height - 16) / 2;
         let baseline_y = height / 2;
         let title_x = 34;
-        let by_x = title_x + title.chars().count() as i32 * 7 + 6;
-        let username_x = by_x + 17;
         let timestamp_x = width - 10;
 
         Group::new()
@@ -240,9 +231,7 @@ impl SvgRenderer {
                     .set("fill", self.text_color.as_str())
                     .set("transform", format!("translate(10 {icon_y})")),
             )
-            .add(self.create_stats_header_title(title_x, baseline_y, title))
-            .add(self.create_stats_header_by_text(by_x, baseline_y))
-            .add(self.create_stats_header_username_link(username_x, baseline_y, username))
+            .add(self.create_stats_header_subject(title_x, baseline_y, title, username))
             .add(self.create_timestamp(timestamp_x, baseline_y, &format!("Updated {current_date}")))
     }
 
