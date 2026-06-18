@@ -22,8 +22,8 @@ static MARKDOWN_TABLE: LazyLock<TableFormat> = LazyLock::new(|| {
         .build()
 });
 
-const SVG_WIDTH: i32 = 800;
-const STATS_HEADER_HEIGHT: i32 = 44;
+const SVG_WIDTH: i32 = 780;
+const STATS_HEADER_HEIGHT: i32 = 34;
 const STATS_FOOTER_HEIGHT: i32 = 26;
 const GENERATOR_URL: &str = "http://github-contrib-stats.vercel.app/";
 const REPO_ICON_PATH: &str = "M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z";
@@ -190,12 +190,23 @@ impl SvgRenderer {
             .set("dominant-baseline", "middle")
     }
 
+    fn create_stats_header_by_text(&self, x: i32, y: i32) -> Text {
+        Text::new("by")
+            .set("x", x)
+            .set("y", y)
+            .set("fill", self.text_color.as_str())
+            .set("font-family", self.font_family.as_str())
+            .set("font-size", 12)
+            .set("opacity", 0.72)
+            .set("dominant-baseline", "middle")
+    }
+
     fn create_stats_header_username_link(&self, x: i32, y: i32, username: &str) -> Anchor {
         Anchor::new()
             .set("href", format!("https://github.com/{username}"))
             .set("target", "_blank")
             .add(
-                Text::new(format!("@{username}"))
+                Text::new(username)
                     .set("x", x)
                     .set("y", y)
                     .set("fill", self.link_color.as_str())
@@ -216,10 +227,11 @@ impl SvgRenderer {
     ) -> Group {
         let current_date = Local::now().format("%Y-%m-%d").to_string();
         let icon_y = (height - 16) / 2;
+        let baseline_y = height / 2;
         let title_x = 34;
+        let by_x = title_x + title.chars().count() as i32 * 7 + 6;
+        let username_x = by_x + 17;
         let timestamp_x = width - 10;
-        let title_y = 13;
-        let username_y = 30;
 
         Group::new()
             .add(
@@ -228,13 +240,10 @@ impl SvgRenderer {
                     .set("fill", self.text_color.as_str())
                     .set("transform", format!("translate(10 {icon_y})")),
             )
-            .add(self.create_stats_header_title(title_x, title_y, title))
-            .add(self.create_stats_header_username_link(title_x, username_y, username))
-            .add(self.create_timestamp(
-                timestamp_x,
-                username_y,
-                &format!("Updated {current_date}"),
-            ))
+            .add(self.create_stats_header_title(title_x, baseline_y, title))
+            .add(self.create_stats_header_by_text(by_x, baseline_y))
+            .add(self.create_stats_header_username_link(username_x, baseline_y, username))
+            .add(self.create_timestamp(timestamp_x, baseline_y, &format!("Updated {current_date}")))
     }
 
     fn create_stats_footer(&self, width: i32, y: i32) -> Text {
@@ -555,7 +564,7 @@ impl Render for SvgRenderer {
     fn render_created_repos(&self, output: &mut String, repos: &[Repository], author: &str) {
         let col_widths = [
             50,  // No.
-            270, // Name
+            250, // Name
             140, // Language
             120, // Stars (including space for fire emoji)
             100, // Forks
@@ -733,7 +742,7 @@ impl Render for SvgRenderer {
     ) {
         let col_widths = [
             50,  // No.
-            290, // Name
+            270, // Name
             120, // Stars
             120, // First PR
             120, // Last PR
@@ -1031,10 +1040,10 @@ mod tests {
 
         let mut created_output = String::new();
         renderer.render_created_repos(&mut created_output, &repos, "test-user");
-        assert!(created_output.contains(r#"viewBox="0 0 800 "#));
+        assert!(created_output.contains(r#"viewBox="0 0 780 "#));
 
         let mut contributed_output = String::new();
         renderer.render_contributed_repos(&mut contributed_output, &contributed_repos, "test-user");
-        assert!(contributed_output.contains(r#"viewBox="0 0 800 "#));
+        assert!(contributed_output.contains(r#"viewBox="0 0 780 "#));
     }
 }
