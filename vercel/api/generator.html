@@ -370,15 +370,15 @@
         }
 
         .share-button {
-            min-height: 2.45rem;
+            min-height: 2.55rem;
             border: 0;
             border-radius: 6px;
             background: var(--surface-strong);
             color: var(--text);
             cursor: pointer;
-            font-size: 0.92rem;
+            font: inherit;
             font-weight: 700;
-            padding: 0.55rem 0.95rem;
+            padding: 0.55rem 1rem;
             white-space: nowrap;
         }
 
@@ -467,7 +467,7 @@
             position: relative;
             max-width: 100%;
             min-height: 280px;
-            overflow: auto;
+            overflow: hidden;
             border-radius: 8px;
             background: var(--surface);
         }
@@ -488,7 +488,8 @@
         .svg-container > svg {
             display: block;
             width: 100%;
-            min-width: 720px;
+            max-width: 100%;
+            min-width: 0;
             height: auto;
         }
 
