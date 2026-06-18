@@ -108,9 +108,9 @@
 
         .generator {
             display: grid;
-            grid-template-columns: minmax(220px, 1fr) minmax(360px, 0.95fr) auto;
+            grid-template-columns: minmax(240px, 1fr) minmax(520px, 0.95fr) auto;
             gap: 0.75rem;
-            align-items: end;
+            align-items: stretch;
             margin-bottom: 1.4rem;
             padding: 1rem;
             border-radius: 8px;
@@ -122,10 +122,16 @@
             min-width: 0;
         }
 
+        .generator > .field {
+            display: grid;
+            align-content: end;
+        }
+
         .filter-controls {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 0.45rem;
+            align-items: end;
             padding: 0.45rem;
             border-radius: 8px;
             background: var(--surface-strong);
@@ -254,6 +260,7 @@
         }
 
         .generate-button {
+            align-self: end;
             min-height: 2.55rem;
             padding: 0.55rem 1rem;
             background: var(--success);
@@ -328,6 +335,13 @@
             min-width: 0;
         }
 
+        .stats-column > h2 {
+            margin-bottom: 0.3rem;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.2;
+        }
+
         .share-panel {
             margin: 0 0 1.35rem;
             padding: 0.65rem;
@@ -369,14 +383,15 @@
         }
 
         .share-button {
+            min-height: 2.45rem;
             border: 0;
             border-radius: 6px;
             background: var(--surface-strong);
             color: var(--text);
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.92rem;
             font-weight: 700;
-            padding: 0.45rem 0.65rem;
+            padding: 0.55rem 0.95rem;
             white-space: nowrap;
         }
 
@@ -542,6 +557,10 @@
             .generator {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
+
+            .filter-controls {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
         @media (max-width: 860px) {
@@ -639,6 +658,7 @@
             const maxRepos = readNumberParam('max_repos', 'Top repos', 1);
             const minStars = readNumberParam('min_stars', 'Min stars', 0);
             const minForks = readNumberParam('min_forks', 'Min forks', 0);
+            const minPrs = readNumberParam('min_prs', 'Min PRs', 0);
 
             if (maxRepos) {
                 params.set('max_repos', maxRepos);
@@ -648,6 +668,9 @@
             }
             if (minForks && minForks !== '0') {
                 params.set('min_forks', minForks);
+            }
+            if (minPrs && minPrs !== '0') {
+                params.set('min_prs', minPrs);
             }
 
             return params;
@@ -689,6 +712,8 @@
             svgParams.delete('username');
             if (kind === 'contributed') {
                 svgParams.delete('min_forks');
+            } else {
+                svgParams.delete('min_prs');
             }
 
             const query = svgParams.toString();
@@ -700,6 +725,7 @@
             byId('max_repos').value = params?.get('max_repos') || '';
             byId('min_stars').value = params?.get('min_stars') || '';
             byId('min_forks').value = params?.get('min_forks') || '';
+            byId('min_prs').value = params?.get('min_prs') || '';
             updateGenerateButton();
         }
 
@@ -990,6 +1016,13 @@
                         <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many forks." aria-label="Only show repositories with at least this many forks.">?</span>
                     </div>
                     <input type="number" id="min_forks" name="min_forks" min="0" step="1" inputmode="numeric" placeholder="0">
+                </div>
+                <div class="field filter-field">
+                    <div class="label-row">
+                        <label for="min_prs">Min PRs</label>
+                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many pull requests." aria-label="Only show repositories with at least this many pull requests.">?</span>
+                    </div>
+                    <input type="number" id="min_prs" name="min_prs" min="0" step="1" inputmode="numeric" placeholder="0">
                 </div>
             </div>
             <button id="generate-button" type="submit" class="generate-button">Generate</button>

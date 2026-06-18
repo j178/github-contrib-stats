@@ -474,7 +474,7 @@ impl Render for SvgRenderer {
             120, // Last Update
         ];
         let row_height = 40;
-        let metadata_height = 28;
+        let metadata_height = 22;
         let total_width = SVG_WIDTH;
         let total_height = metadata_height + (repos.len() as i32 + 2) * row_height;
 
@@ -643,7 +643,7 @@ impl Render for SvgRenderer {
             100, // PR Count
         ];
         let row_height = 40;
-        let metadata_height = 28;
+        let metadata_height = 22;
         let total_width = SVG_WIDTH;
         let total_height = metadata_height + (repos.len() as i32 + 2) * row_height;
 

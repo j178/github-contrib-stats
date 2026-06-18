@@ -19,6 +19,7 @@ struct StatsParams {
     max_repos: Option<usize>,
     min_stars: u32,
     min_forks: u32,
+    min_prs: u32,
 }
 
 #[tokio::main]
@@ -99,6 +100,7 @@ fn parse_stats_params(req: &Request) -> Result<StatsParams, Error> {
         max_repos: parse_optional_usize(&query, "max_repos")?,
         min_stars: parse_u32(&query, "min_stars")?,
         min_forks: parse_u32(&query, "min_forks")?,
+        min_prs: parse_u32(&query, "min_prs")?,
     })
 }
 
@@ -139,7 +141,8 @@ fn filter_contributed_repos(
     mut repos: Vec<ContributedRepo>,
     params: StatsParams,
 ) -> Vec<ContributedRepo> {
-    repos.retain(|repo| repo.stargazer_count >= params.min_stars);
+    repos
+        .retain(|repo| repo.stargazer_count >= params.min_stars && repo.pr_count >= params.min_prs);
     if let Some(max_repos) = params.max_repos {
         repos.truncate(max_repos);
     }
