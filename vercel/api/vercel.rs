@@ -43,6 +43,9 @@ async fn main() -> Result<(), Error> {
                     None => not_found(),
                 }
             }
+            (path, method) if method == "GET" && username_from_page_path(path).is_some() => {
+                render_stats_page()
+            }
             _ => not_found(),
         };
         match res {
@@ -65,6 +68,11 @@ fn not_found() -> Result<Response<Body>, Error> {
 fn username_from_svg_path<'a>(path: &'a str, suffix: &str) -> Option<&'a str> {
     let username = path.strip_prefix('/')?.strip_suffix(suffix)?;
     is_valid_username(username).then_some(username)
+}
+
+fn username_from_page_path(path: &str) -> Option<&str> {
+    let username = path.strip_prefix('/')?;
+    (!username.contains('/') && is_valid_username(username)).then_some(username)
 }
 
 fn is_valid_username(username: &str) -> bool {
@@ -250,4 +258,29 @@ async fn render_contributed_svg(username: String, req: &Request) -> Result<Respo
         )
         .header("ETag", format!("\"{}\"", username))
         .body(buf.into())?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{username_from_page_path, username_from_svg_path};
+
+    #[test]
+    fn username_page_path_accepts_single_username_segment() {
+        assert_eq!(username_from_page_path("/j178"), Some("j178"));
+        assert_eq!(username_from_page_path("/j178/created.svg"), None);
+        assert_eq!(username_from_page_path("/"), None);
+    }
+
+    #[test]
+    fn username_svg_path_accepts_valid_svg_routes() {
+        assert_eq!(
+            username_from_svg_path("/j178/created.svg", "/created.svg"),
+            Some("j178")
+        );
+        assert_eq!(
+            username_from_svg_path("/j178/contributed.svg", "/contributed.svg"),
+            Some("j178")
+        );
+        assert_eq!(username_from_svg_path("/j178", "/created.svg"), None);
+    }
 }

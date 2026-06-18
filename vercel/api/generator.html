@@ -315,6 +315,13 @@
             font-size: clamp(1.35rem, 2vw, 1.8rem);
         }
 
+        .result-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+
         .page-url {
             max-width: min(720px, 55vw);
             overflow: hidden;
@@ -336,13 +343,6 @@
             min-width: 0;
         }
 
-        .column-title {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-        }
-
         .share-panel {
             margin: 0 0 1.35rem;
             padding: 0.65rem;
@@ -358,15 +358,7 @@
             margin-bottom: 0.5rem;
         }
 
-        .share-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .format-tabs,
-        .share-targets {
+        .format-tabs {
             display: inline-flex;
             gap: 0.125rem;
             padding: 0.125rem;
@@ -374,8 +366,7 @@
             background: var(--surface-strong);
         }
 
-        .format-tab,
-        .share-target {
+        .format-tab {
             border: 0;
             border-radius: 4px;
             background: transparent;
@@ -387,8 +378,7 @@
             padding: 0.45rem 0.65rem;
         }
 
-        .format-tab[aria-pressed="true"],
-        .share-target[aria-pressed="true"] {
+        .format-tab[aria-pressed="true"] {
             background: var(--accent);
             color: #ffffff;
         }
@@ -408,6 +398,32 @@
         .share-button:hover,
         .share-button[aria-expanded="true"] {
             background: var(--line);
+        }
+
+        .share-list {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .share-item {
+            padding: 0.65rem;
+            border-radius: 6px;
+            background: var(--surface-strong);
+        }
+
+        .share-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .share-item-title {
+            margin: 0;
+            color: var(--text);
+            font-size: 0.9rem;
+            font-weight: 700;
         }
 
         .copy-button {
@@ -559,6 +575,12 @@
                 text-align: left;
             }
 
+            .result-actions {
+                align-items: flex-start;
+                flex-direction: column;
+                width: 100%;
+            }
+
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -585,18 +607,8 @@
                 flex-direction: column;
             }
 
-            .share-controls {
-                align-items: stretch;
-                flex-direction: column;
-            }
-
-            .share-targets {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                width: 100%;
-            }
-
             .copy-button,
+            .share-button,
             .generate-button {
                 width: 100%;
             }
@@ -661,17 +673,32 @@
         }
 
         function currentParams() {
-            const params = new URLSearchParams(window.location.search);
-            const username = normalizeUsername(params.get('username') || '');
-            if (!username) {
+            const pathSegments = window.location.pathname.split('/').filter(Boolean);
+            if (pathSegments.length !== 1) {
                 return null;
             }
+
+            let username;
+            try {
+                username = normalizeUsername(decodeURIComponent(pathSegments[0]));
+            } catch {
+                return null;
+            }
+            if (!username || !USERNAME_PATTERN.test(username)) {
+                return null;
+            }
+
+            const params = new URLSearchParams(window.location.search);
             params.set('username', username);
             return params;
         }
 
         function pageUrl(params) {
-            return `${window.location.origin}/?${params}`;
+            const pageParams = new URLSearchParams(params);
+            const username = pageParams.get('username');
+            pageParams.delete('username');
+            const query = pageParams.toString();
+            return `${window.location.origin}/${encodeURIComponent(username)}${query ? `?${query}` : ''}`;
         }
 
         function svgUrl(kind, params) {
@@ -709,7 +736,7 @@
             byId('empty-state').hidden = false;
             byId('result-area').hidden = true;
             byId('share-panel').hidden = true;
-            updateShareButtons('');
+            updateShareButton(false);
             document.title = 'GitHub Contribution Stats';
         }
 
@@ -806,55 +833,39 @@
             return `![${label}](${url})`;
         }
 
-        function updateSharePanel({ kind, format } = {}) {
+        function updateSharePanel({ format } = {}) {
             const panel = byId('share-panel');
-            const selectedKind = kind || panel.dataset.kind || 'created';
             const selectedFormat = format || panel.dataset.format || 'markdown';
-            panel.dataset.kind = selectedKind;
             panel.dataset.format = selectedFormat;
-            panel.querySelector('code').textContent = getSnippet(selectedKind, selectedFormat);
-
-            panel.querySelectorAll('.share-target').forEach((tab) => {
-                const selected = tab.dataset.kind === selectedKind;
-                tab.setAttribute('aria-pressed', selected ? 'true' : 'false');
-            });
 
             panel.querySelectorAll('.format-tab').forEach((tab) => {
                 const selected = tab.dataset.format === selectedFormat;
                 tab.setAttribute('aria-pressed', selected ? 'true' : 'false');
             });
 
-            const copyButton = panel.querySelector('.copy-button');
-            copyButton.textContent = 'Copy';
-            copyButton.disabled = !shareUrl(selectedKind);
-            panel.querySelector('.copy-state').textContent = '';
-        }
-
-        function updateShareButtons(activeKind) {
-            document.querySelectorAll('.share-button').forEach((button) => {
-                button.setAttribute('aria-expanded', button.dataset.kind === activeKind ? 'true' : 'false');
+            panel.querySelectorAll('.share-item').forEach((item) => {
+                const kind = item.dataset.kind;
+                item.querySelector('code').textContent = getSnippet(kind, selectedFormat);
+                const copyButton = item.querySelector('.copy-button');
+                copyButton.textContent = 'Copy';
+                copyButton.disabled = !shareUrl(kind);
+                item.querySelector('.copy-state').textContent = '';
             });
         }
 
-        function openShare(kind) {
+        function updateShareButton(expanded) {
+            byId('share-button').setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+
+        function toggleSharePanel() {
             const panel = byId('share-panel');
-            if (!panel.hidden && panel.dataset.kind === kind) {
-                panel.hidden = true;
-                updateShareButtons('');
-                return;
-            }
-            panel.hidden = false;
-            updateSharePanel({ kind });
-            updateShareButtons(kind);
+            panel.hidden = !panel.hidden;
+            updateShareButton(!panel.hidden);
+            updateSharePanel();
         }
 
         function selectFormat(button) {
             updateSharePanel({ format: button.dataset.format });
-        }
-
-        function selectShareTarget(button) {
-            updateSharePanel({ kind: button.dataset.kind });
-            updateShareButtons(button.dataset.kind);
         }
 
         function setupSharePanel() {
@@ -901,9 +912,9 @@
         }
 
         async function copySnippet(button) {
-            const panel = byId('share-panel');
-            const text = panel.querySelector('code').textContent.trim();
-            const state = panel.querySelector('.copy-state');
+            const item = button.closest('.share-item');
+            const text = item.querySelector('code').textContent.trim();
+            const state = item.querySelector('.copy-state');
             if (!text) {
                 return;
             }
@@ -976,7 +987,7 @@
         <form id="generator-form" class="generator" novalidate>
             <div class="field">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" autocomplete="username" spellcheck="false" placeholder="j178" required>
+                <input type="text" id="username" name="username" autocomplete="username" spellcheck="false" required>
             </div>
             <div class="field">
                 <div class="label-row">
@@ -1023,42 +1034,48 @@
         <section id="result-area" hidden>
             <div class="result-header">
                 <h2 class="result-title">GitHub Stats for <a id="profile-link" href="#" target="_blank" rel="noopener noreferrer"></a></h2>
-                <div id="page-url" class="page-url" aria-label="Generated page URL"></div>
+                <div class="result-actions">
+                    <div id="page-url" class="page-url" aria-label="Generated page URL"></div>
+                    <button id="share-button" type="button" class="share-button" aria-controls="share-panel" aria-expanded="false" onclick="toggleSharePanel()">Share</button>
+                </div>
             </div>
 
-            <div id="share-panel" class="share-panel" data-kind="created" data-format="markdown" hidden>
+            <div id="share-panel" class="share-panel" data-format="markdown" hidden>
                 <div class="share-toolbar">
-                    <div class="share-controls">
-                        <div class="share-targets" role="group" aria-label="Share target">
-                            <button type="button" class="share-target" data-kind="created" aria-pressed="true" onclick="selectShareTarget(this)">Created</button>
-                            <button type="button" class="share-target" data-kind="contributed" aria-pressed="false" onclick="selectShareTarget(this)">Contributed</button>
-                        </div>
-                        <div class="format-tabs" role="group" aria-label="Share format">
-                            <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
-                            <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
-                            <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
-                        </div>
+                    <div class="format-tabs" role="group" aria-label="Share format">
+                        <button type="button" class="format-tab" data-format="markdown" aria-pressed="true" onclick="selectFormat(this)">Markdown</button>
+                        <button type="button" class="format-tab" data-format="html" aria-pressed="false" onclick="selectFormat(this)">HTML</button>
+                        <button type="button" class="format-tab" data-format="url" aria-pressed="false" onclick="selectFormat(this)">URL</button>
                     </div>
-                    <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
                 </div>
-                <pre class="snippet-box"><code></code></pre>
-                <span class="copy-state" aria-live="polite"></span>
+                <div class="share-list">
+                    <div class="share-item" data-kind="created">
+                        <div class="share-item-header">
+                            <h3 class="share-item-title">Created Repositories</h3>
+                            <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
+                        </div>
+                        <pre class="snippet-box"><code></code></pre>
+                        <span class="copy-state" aria-live="polite"></span>
+                    </div>
+                    <div class="share-item" data-kind="contributed">
+                        <div class="share-item-header">
+                            <h3 class="share-item-title">Contributed Repositories</h3>
+                            <button type="button" class="copy-button" onclick="copySnippet(this)">Copy</button>
+                        </div>
+                        <pre class="snippet-box"><code></code></pre>
+                        <span class="copy-state" aria-live="polite"></span>
+                    </div>
+                </div>
             </div>
 
             <div class="stats-grid">
                 <div class="stats-column">
-                    <div class="column-title">
-                        <h2>Created Repositories</h2>
-                        <button type="button" class="share-button" data-kind="created" aria-controls="share-panel" aria-expanded="false" onclick="openShare('created')">Share</button>
-                    </div>
+                    <h2>Created Repositories</h2>
                     <div id="created-svg" class="svg-container" data-state="idle"></div>
                 </div>
 
                 <div class="stats-column">
-                    <div class="column-title">
-                        <h2>Contributed Repositories</h2>
-                        <button type="button" class="share-button" data-kind="contributed" aria-controls="share-panel" aria-expanded="false" onclick="openShare('contributed')">Share</button>
-                    </div>
+                    <h2>Contributed Repositories</h2>
                     <div id="contributed-svg" class="svg-container" data-state="idle"></div>
                 </div>
             </div>
