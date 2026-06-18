@@ -22,8 +22,10 @@ static MARKDOWN_TABLE: LazyLock<TableFormat> = LazyLock::new(|| {
         .build()
 });
 
-const SVG_WIDTH: i32 = 860;
-const GENERATOR_URL: &str = "https://github-contrib-stats.vercel.app/";
+const SVG_WIDTH: i32 = 800;
+const STATS_HEADER_HEIGHT: i32 = 34;
+const STATS_FOOTER_HEIGHT: i32 = 26;
+const GENERATOR_URL: &str = "http://github-contrib-stats.vercel.app/";
 const REPO_ICON_PATH: &str = "M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z";
 const PULL_REQUEST_ICON_PATH: &str = "M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z";
 
@@ -200,6 +202,7 @@ impl SvgRenderer {
                     .set("font-family", self.font_family.as_str())
                     .set("font-size", 12)
                     .set("opacity", 0.85)
+                    .set("text-anchor", "end")
                     .set("dominant-baseline", "middle"),
             )
     }
@@ -216,7 +219,8 @@ impl SvgRenderer {
         let icon_y = (height - 16) / 2;
         let baseline_y = height / 2;
         let title_x = 34;
-        let username_x = title_x + title.chars().count() as i32 * 7 + 14;
+        let timestamp_x = width - 10;
+        let username_x = timestamp_x - 130;
 
         Group::new()
             .add(
@@ -227,14 +231,14 @@ impl SvgRenderer {
             )
             .add(self.create_stats_header_title(title_x, baseline_y, title))
             .add(self.create_stats_header_username_link(username_x, baseline_y, username))
-            .add(self.create_timestamp(width - 10, baseline_y, &format!("Updated {current_date}")))
+            .add(self.create_timestamp(timestamp_x, baseline_y, &format!("Updated {current_date}")))
     }
 
     fn create_stats_footer(&self, width: i32, y: i32) -> Group {
         let link_text = "github-contrib-stats";
-        let link_width = link_text.chars().count() as i32 * 6;
+        let link_width = link_text.chars().count() as i32 * 5 + 2;
         let link_x = width - 10;
-        let prefix_x = link_x - link_width - 4;
+        let prefix_x = link_x - link_width - 3;
 
         Group::new()
             .add(
@@ -256,10 +260,10 @@ impl SvgRenderer {
                         Text::new(link_text)
                             .set("x", link_x)
                             .set("y", y)
-                            .set("fill", self.text_color.as_str())
+                            .set("fill", self.link_color.as_str())
                             .set("font-family", self.font_family.as_str())
                             .set("font-size", 11)
-                            .set("opacity", 0.55)
+                            .set("opacity", 0.85)
                             .set("text-anchor", "end")
                             .set("dominant-baseline", "middle"),
                     ),
@@ -559,15 +563,15 @@ impl Render for SvgRenderer {
     fn render_created_repos(&self, output: &mut String, repos: &[Repository], author: &str) {
         let col_widths = [
             50,  // No.
-            330, // Name
+            270, // Name
             140, // Language
             120, // Stars (including space for fire emoji)
             100, // Forks
             120, // Last Update
         ];
         let row_height = 40;
-        let stats_header_height = 34;
-        let stats_footer_height = 26;
+        let stats_header_height = STATS_HEADER_HEIGHT;
+        let stats_footer_height = STATS_FOOTER_HEIGHT;
         let total_width = SVG_WIDTH;
         let total_height =
             stats_header_height + (repos.len() as i32 + 2) * row_height + stats_footer_height;
@@ -737,15 +741,15 @@ impl Render for SvgRenderer {
     ) {
         let col_widths = [
             50,  // No.
-            350, // Name
+            290, // Name
             120, // Stars
             120, // First PR
             120, // Last PR
             100, // PR Count
         ];
         let row_height = 40;
-        let stats_header_height = 34;
-        let stats_footer_height = 26;
+        let stats_header_height = STATS_HEADER_HEIGHT;
+        let stats_footer_height = STATS_FOOTER_HEIGHT;
         let total_width = SVG_WIDTH;
         let total_height =
             stats_header_height + (repos.len() as i32 + 2) * row_height + stats_footer_height;
@@ -1035,10 +1039,10 @@ mod tests {
 
         let mut created_output = String::new();
         renderer.render_created_repos(&mut created_output, &repos, "test-user");
-        assert!(created_output.contains(r#"viewBox="0 0 860 "#));
+        assert!(created_output.contains(r#"viewBox="0 0 800 "#));
 
         let mut contributed_output = String::new();
         renderer.render_contributed_repos(&mut contributed_output, &contributed_repos, "test-user");
-        assert!(contributed_output.contains(r#"viewBox="0 0 860 "#));
+        assert!(contributed_output.contains(r#"viewBox="0 0 800 "#));
     }
 }

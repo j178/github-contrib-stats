@@ -165,17 +165,30 @@
         .help-tip {
             position: relative;
             display: inline-grid;
-            width: 1rem;
-            height: 1rem;
+            width: 0.85rem;
+            height: 0.85rem;
             place-items: center;
             border-radius: 50%;
-            background: var(--line);
+            background: transparent;
             color: var(--muted);
             cursor: help;
-            font-size: 0.7rem;
-            font-weight: 800;
             line-height: 1;
+            opacity: 0.42;
             text-transform: none;
+            transition: color 0.12s ease, opacity 0.12s ease;
+        }
+
+        .help-tip:hover,
+        .help-tip:focus-visible {
+            color: var(--accent);
+            opacity: 0.9;
+        }
+
+        .help-tip-icon {
+            width: 0.8rem;
+            height: 0.8rem;
+            stroke: currentColor;
+            stroke-width: 1.7;
         }
 
         .help-tip::after {
@@ -987,28 +1000,28 @@
                 <div class="field filter-field">
                     <div class="label-row">
                         <label for="max_repos">Top repos</label>
-                        <span class="help-tip" tabindex="0" data-tooltip="Maximum number of repositories shown after sorting and filtering. Leave empty to show all." aria-label="Maximum number of repositories shown after sorting and filtering. Leave empty to show all.">?</span>
+                        <span class="help-tip" tabindex="0" data-tooltip="Maximum number of repositories shown after sorting and filtering. Leave empty to show all." aria-label="Maximum number of repositories shown after sorting and filtering. Leave empty to show all."><svg class="help-tip-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.25"></circle><path d="M8 7.25v4"></path><path d="M8 4.75h.01"></path></svg></span>
                     </div>
                     <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All">
                 </div>
                 <div class="field filter-field">
                     <div class="label-row">
                         <label for="min_stars">Min stars</label>
-                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many stars." aria-label="Only show repositories with at least this many stars.">?</span>
+                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many stars." aria-label="Only show repositories with at least this many stars."><svg class="help-tip-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.25"></circle><path d="M8 7.25v4"></path><path d="M8 4.75h.01"></path></svg></span>
                     </div>
                     <input type="number" id="min_stars" name="min_stars" min="0" step="1" inputmode="numeric" placeholder="0">
                 </div>
                 <div class="field filter-field">
                     <div class="label-row">
                         <label for="min_forks">Min forks</label>
-                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many forks." aria-label="Only show repositories with at least this many forks.">?</span>
+                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many forks." aria-label="Only show repositories with at least this many forks."><svg class="help-tip-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.25"></circle><path d="M8 7.25v4"></path><path d="M8 4.75h.01"></path></svg></span>
                     </div>
                     <input type="number" id="min_forks" name="min_forks" min="0" step="1" inputmode="numeric" placeholder="0">
                 </div>
                 <div class="field filter-field">
                     <div class="label-row">
                         <label for="min_prs">Min PRs</label>
-                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many pull requests." aria-label="Only show repositories with at least this many pull requests.">?</span>
+                        <span class="help-tip" tabindex="0" data-tooltip="Only show repositories with at least this many pull requests." aria-label="Only show repositories with at least this many pull requests."><svg class="help-tip-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.25"></circle><path d="M8 7.25v4"></path><path d="M8 4.75h.01"></path></svg></span>
                     </div>
                     <input type="number" id="min_prs" name="min_prs" min="0" step="1" inputmode="numeric" placeholder="0">
                 </div>
