@@ -23,7 +23,7 @@ static MARKDOWN_TABLE: LazyLock<TableFormat> = LazyLock::new(|| {
 });
 
 const SVG_WIDTH: i32 = 780;
-const STATS_HEADER_HEIGHT: i32 = 50;
+const STATS_HEADER_HEIGHT: i32 = 56;
 const STATS_HEADER_ICON_SIZE: i32 = 20;
 const STATS_FOOTER_HEIGHT: i32 = 26;
 const GENERATOR_URL: &str = "http://github-contrib-stats.vercel.app/";
@@ -177,7 +177,6 @@ impl SvgRenderer {
             .set("font-family", self.font_family.as_str())
             .set("font-size", 12)
             .set("text-anchor", "end")
-            .set("dominant-baseline", "middle")
     }
 
     fn create_stats_header_subject(&self, x: i32, y: i32, title: &str, username: &str) -> Text {
@@ -185,7 +184,7 @@ impl SvgRenderer {
             .set("x", x)
             .set("y", y)
             .set("font-family", self.font_family.as_str())
-            .set("dominant-baseline", "middle")
+            .set("xml:space", "preserve")
             .add(
                 TSpan::new(title)
                     .set("fill", self.text_color.as_str())
@@ -220,9 +219,11 @@ impl SvgRenderer {
         icon_path: &str,
     ) -> Group {
         let current_date = Local::now().format("%Y-%m-%d").to_string();
-        let baseline_y = height / 2 + 5;
+        let content_center_y = height / 2 + 4;
+        let title_baseline_y = content_center_y + 6;
+        let timestamp_baseline_y = content_center_y + 4;
         let icon_scale = f64::from(STATS_HEADER_ICON_SIZE) / 16.0;
-        let icon_y = baseline_y - STATS_HEADER_ICON_SIZE / 2;
+        let icon_y = content_center_y - STATS_HEADER_ICON_SIZE / 2;
         let title_x = 38;
         let timestamp_x = width - 10;
 
@@ -236,8 +237,12 @@ impl SvgRenderer {
                         format!("translate(10 {icon_y}) scale({icon_scale})"),
                     ),
             )
-            .add(self.create_stats_header_subject(title_x, baseline_y, title, username))
-            .add(self.create_timestamp(timestamp_x, baseline_y, &format!("Updated {current_date}")))
+            .add(self.create_stats_header_subject(title_x, title_baseline_y, title, username))
+            .add(self.create_timestamp(
+                timestamp_x,
+                timestamp_baseline_y,
+                &format!("Updated {current_date}"),
+            ))
     }
 
     fn create_stats_footer(&self, width: i32, y: i32) -> Text {
