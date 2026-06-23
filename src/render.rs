@@ -27,6 +27,7 @@ const STATS_HEADER_HEIGHT: i32 = 56;
 const STATS_HEADER_ICON_SIZE: i32 = 20;
 const STATS_HEADER_CONTENT_OFFSET_Y: i32 = 4;
 const STATS_HEADER_TEXT_DY: &str = "0.35em";
+const STATS_HEADER_TEXT_GAP: i32 = 4;
 const STATS_FOOTER_HEIGHT: i32 = 26;
 const GENERATOR_URL: &str = "http://github-contrib-stats.vercel.app/";
 const REPO_ICON_PATH: &str = "M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z";
@@ -189,14 +190,14 @@ impl SvgRenderer {
             .set("font-family", self.font_family.as_str())
             .set("font-size", 16)
             .set("dy", STATS_HEADER_TEXT_DY)
-            .set("xml:space", "preserve")
             .add(
                 TSpan::new(title)
                     .set("fill", self.text_color.as_str())
                     .set("font-weight", "bold"),
             )
             .add(
-                TSpan::new(" by ")
+                TSpan::new("by")
+                    .set("dx", STATS_HEADER_TEXT_GAP)
                     .set("fill", self.text_color.as_str())
                     .set("font-size", 14)
                     .set("opacity", 0.72),
@@ -207,6 +208,7 @@ impl SvgRenderer {
                     .set("target", "_blank")
                     .add(
                         TSpan::new(username)
+                            .set("dx", STATS_HEADER_TEXT_GAP)
                             .set("fill", self.link_color.as_str())
                             .set("font-size", 14)
                             .set("opacity", 0.85),
