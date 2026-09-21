@@ -139,9 +139,6 @@
 
         .repository-options {
             grid-column: 1 / -1;
-            display: grid;
-            grid-template-columns: minmax(0, 36rem) minmax(0, 12rem);
-            gap: 1.5rem;
             margin-top: 0.25rem;
             padding-top: 1rem;
             border-top: 1px solid var(--line);
@@ -163,8 +160,9 @@
 
         .filter-controls {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 0.75rem;
+            max-width: 50rem;
         }
 
         .filter-control {
@@ -376,7 +374,7 @@
             color: #ffffff;
         }
 
-        .share-button {
+        .panel-button {
             min-height: 2.55rem;
             border: 0;
             border-radius: 6px;
@@ -389,12 +387,12 @@
             white-space: nowrap;
         }
 
-        .share-button:hover,
-        .share-button[aria-expanded="true"] {
+        .panel-button:hover,
+        .panel-button[aria-expanded="true"] {
             background: var(--line);
         }
 
-        .share-button:disabled {
+        .panel-button:disabled {
             cursor: not-allowed;
             opacity: 0.55;
         }
@@ -553,12 +551,6 @@
             }
         }
 
-        @media (max-width: 1100px) {
-            .generator {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
         @media (max-width: 860px) {
             .page {
                 width: min(94vw, 780px);
@@ -573,8 +565,12 @@
                 grid-template-columns: 1fr;
             }
 
-            .repository-options {
-                grid-template-columns: minmax(0, 36rem);
+            .generator {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-controls {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
@@ -593,8 +589,12 @@
             }
 
             .generator-actions {
-                align-items: stretch;
-                flex-direction: column;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .generator-actions > .generate-button {
+                grid-column: 1 / -1;
             }
 
             .generator-actions > button {
@@ -613,7 +613,7 @@
             }
 
             .copy-button,
-            .share-button,
+            .panel-button,
             .generate-button {
                 width: 100%;
             }
@@ -904,6 +904,12 @@
             updateSharePanel();
         }
 
+        function toggleRepositoryOptions() {
+            const panel = byId('repository-options');
+            panel.hidden = !panel.hidden;
+            byId('options-button').setAttribute('aria-expanded', String(!panel.hidden));
+        }
+
         function selectFormat(button) {
             updateSharePanel({ format: button.dataset.format });
         }
@@ -1030,11 +1036,12 @@
             </div>
             <div class="generator-actions">
                 <button id="generate-button" type="submit" class="generate-button">Show stats</button>
-                <button id="share-button" type="button" class="share-button" aria-controls="share-panel" aria-expanded="false" onclick="toggleSharePanel()" disabled>Share</button>
+                <button id="options-button" type="button" class="panel-button" aria-controls="repository-options" aria-expanded="false" onclick="toggleRepositoryOptions()">Options</button>
+                <button id="share-button" type="button" class="panel-button" aria-controls="share-panel" aria-expanded="false" onclick="toggleSharePanel()" disabled>Share</button>
             </div>
-            <div class="repository-options">
+            <div id="repository-options" class="repository-options" hidden>
                 <fieldset class="option-group">
-                    <legend>Only show repositories with</legend>
+                    <legend>Repository options</legend>
                     <div class="filter-controls">
                         <div class="filter-control">
                             <label class="filter-label" id="stars-label" for="min_stars">Stars</label>
@@ -1061,17 +1068,14 @@
                                 Only count merged PRs
                             </label>
                         </div>
-                    </div>
-                </fieldset>
-                <fieldset class="option-group">
-                    <legend>Display</legend>
-                    <div class="filter-control">
-                        <label class="filter-label" id="repos-label" for="max_repos">Repositories</label>
-                        <div class="number-field">
-                            <span class="number-prefix" id="repos-prefix">Show up to</span>
-                            <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All" aria-labelledby="repos-prefix repos-label" aria-describedby="repo-limit-hint">
+                        <div class="filter-control">
+                            <label class="filter-label" id="repos-label" for="max_repos">Repositories</label>
+                            <div class="number-field">
+                                <span class="number-prefix" id="repos-prefix">Show up to</span>
+                                <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All" aria-labelledby="repos-prefix repos-label" aria-describedby="repo-limit-hint">
+                            </div>
+                            <span id="repo-limit-hint" class="repo-limit-hint">Leave empty for all</span>
                         </div>
-                        <span id="repo-limit-hint" class="repo-limit-hint">Leave empty for all</span>
                     </div>
                 </fieldset>
             </div>
