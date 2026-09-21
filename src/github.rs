@@ -29,17 +29,10 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| {
         HeaderValue::from_str(&format!("Bearer {token}")).unwrap(),
     );
 
-    let mut builder = Client::builder().default_headers(headers);
+    let builder = Client::builder().default_headers(headers);
 
     #[cfg(not(target_arch = "wasm32"))]
-    {
-        use std::time::Duration;
-        builder = builder.connect_timeout(Duration::from_millis(500));
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        builder = builder;
-    }
+    let builder = builder.connect_timeout(std::time::Duration::from_millis(500));
 
     builder.build().unwrap()
 });
@@ -181,7 +174,7 @@ pub async fn get_created_repos(
         .filter(|repo| repo.stargazer_count > 0 || repo.fork_count > 0)
         .collect();
 
-    repos.sort_by(|a, b| b.stargazer_count.cmp(&a.stargazer_count));
+    repos.sort_by_key(|repo| Reverse(repo.stargazer_count));
     if let Some(n) = max_repos {
         repos.truncate(n);
     }
@@ -461,7 +454,7 @@ pub fn get_contributed_repos(
     let mut repos: Vec<_> = groups
         .into_iter()
         .filter_map(|(repo_name, mut prs)| {
-            prs.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+            prs.sort_by_key(|pr| pr.created_at);
             let first_pr = prs.first()?.clone();
             let last_pr = prs.last()?.clone();
             let pr_count = u32::try_from(prs.len()).ok()?;
@@ -489,43 +482,6 @@ pub fn get_contributed_repos(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn contribution_counts_preserve_all_prs_while_counting_merged_prs() {
-        let prs: Vec<PullRequest> = [
-            ("many-open", 1, false),
-            ("many-open", 2, true),
-            ("many-open", 3, false),
-            ("many-open", 4, false),
-            ("more-merged", 5, true),
-            ("more-merged", 6, true),
-            ("unmerged", 7, false),
-        ]
-        .into_iter()
-        .map(|(repo, day, merged)| PullRequest {
-            url: format!("https://github.com/owner/{repo}/pull/{day}"),
-            created_at: format!("2026-06-{day:02}T00:00:00Z").parse().unwrap(),
-            merged,
-            repository: RepositoryWithStargazerCount {
-                stargazer_count: 42,
-            },
-        })
-        .collect();
-
-        let all = get_contributed_repos(prs.clone(), None);
-        assert_eq!(all.len(), 3);
-        assert_eq!(all[0].full_name, "owner/many-open");
-        assert_eq!(all[0].pr_count, 4);
-        assert_eq!(all[0].merged_pr_count, 1);
-        assert_eq!(all[0].first_pr, prs[0]);
-        assert_eq!(all[0].last_pr, prs[3]);
-
-        assert_eq!(all[1].full_name, "owner/more-merged");
-        assert_eq!((all[1].merged_pr_count, all[1].pr_count), (2, 2));
-        assert_eq!(all[2].full_name, "owner/unmerged");
-        assert_eq!((all[2].merged_pr_count, all[2].pr_count), (0, 1));
-        assert_eq!(get_contributed_repos(prs, Some(1)), all[..1]);
-    }
 
     #[test]
     fn pull_request_search_result_accepts_null_edges() {

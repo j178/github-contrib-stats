@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 use anyhow::anyhow;
+use http::StatusCode;
 use log::info;
 use redis::AsyncCommands;
-use url::Url;
-use vercel_runtime::{Body, Error, Request, Response, StatusCode, run};
+use vercel_runtime::{Error, Request, Response, ResponseBody, run, service_fn};
 
 use github_contrib_stats::github::{ContributedRepo, Repository};
 use github_contrib_stats::{github, render::Render, render::SvgRenderer};
@@ -52,17 +52,17 @@ async fn main() -> Result<(), Error> {
             Ok(res) => Ok(res),
             Err(e) => Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!("Error: {}", e)))?),
+                .body(ResponseBody::from(format!("Error: {}", e)))?),
         }
     };
 
-    run(h).await
+    run(service_fn(h)).await
 }
 
-fn not_found() -> Result<Response<Body>, Error> {
+fn not_found() -> Result<Response<ResponseBody>, Error> {
     Ok(Response::builder()
         .status(StatusCode::NOT_FOUND)
-        .body(Body::from("Not found"))?)
+        .body(ResponseBody::from("Not found"))?)
 }
 
 fn username_from_svg_path<'a>(path: &'a str, suffix: &str) -> Option<&'a str> {
@@ -85,16 +85,16 @@ fn is_valid_username(username: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
 }
 
-fn render_stats_page() -> Result<Response<Body>, Error> {
+fn render_stats_page() -> Result<Response<ResponseBody>, Error> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html; charset=utf-8")
-        .body(Body::from(GENERATOR_TEMPLATE))?)
+        .body(ResponseBody::from(GENERATOR_TEMPLATE))?)
 }
 
 fn parse_stats_params(req: &Request) -> Result<StatsParams, Error> {
-    let url = Url::parse(&req.uri().to_string())?;
-    let query: Query<'_> = url.query_pairs().collect();
+    let query: Query<'_> =
+        url::form_urlencoded::parse(req.uri().query().unwrap_or_default().as_bytes()).collect();
 
     Ok(StatsParams {
         max_repos: parse_optional_usize(&query, "max_repos")?,
@@ -161,7 +161,7 @@ where
     F: AsyncFnOnce() -> Result<T, anyhow::Error>,
 {
     let redis_client = get_redis_client().await?;
-    let mut conn = match redis_client.get_multiplexed_tokio_connection().await {
+    let mut conn = match redis_client.get_multiplexed_async_connection().await {
         Ok(conn) => conn,
         Err(e) => {
             info!("Failed to connect to Redis: {}", e);
@@ -169,10 +169,11 @@ where
         }
     };
 
-    // Try to get from cache first
+    // Keep the cache format compatible with entries written by bincode 1.
+    let config = bincode::config::legacy();
     match conn.get::<_, Option<Vec<u8>>>(cache_key).await {
-        Ok(Some(cached_data)) => match bincode::deserialize(&cached_data) {
-            Ok(value) => {
+        Ok(Some(cached_data)) => match bincode::serde::decode_from_slice(&cached_data, config) {
+            Ok((value, _)) => {
                 info!("Cache hit for key: {}", cache_key);
                 Ok(value)
             }
@@ -186,7 +187,7 @@ where
             let value = compute().await?;
 
             // Store in cache
-            if let Ok(cached_data) = bincode::serialize(&value)
+            if let Ok(cached_data) = bincode::serde::encode_to_vec(&value, config)
                 && let Err(e) = conn
                     .set_ex::<_, _, ()>(cache_key, cached_data, 12 * 3600)
                     .await
@@ -203,16 +204,19 @@ where
     }
 }
 
-async fn render_created_svg(username: &str, req: &Request) -> Result<Response<Body>, Error> {
+async fn render_created_svg(
+    username: &str,
+    req: &Request,
+) -> Result<Response<ResponseBody>, Error> {
     let params = parse_stats_params(req)?;
 
     let cache_key = format!("created:{}:all", username);
     let repos =
-        get_cached_or_compute(&cache_key, || github::get_created_repos(&username, None)).await?;
+        get_cached_or_compute(&cache_key, || github::get_created_repos(username, None)).await?;
     let repos = filter_created_repos(repos, params);
 
     let mut buf = String::new();
-    SvgRenderer::new().render_created_repos(&mut buf, &repos, &username);
+    SvgRenderer::new().render_created_repos(&mut buf, &repos, username);
 
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -225,7 +229,10 @@ async fn render_created_svg(username: &str, req: &Request) -> Result<Response<Bo
         .body(buf.into())?)
 }
 
-async fn render_contributed_svg(username: &str, req: &Request) -> Result<Response<Body>, Error> {
+async fn render_contributed_svg(
+    username: &str,
+    req: &Request,
+) -> Result<Response<ResponseBody>, Error> {
     let params = parse_stats_params(req)?;
 
     let cache_key = format!("pull_requests:{username}:all");
