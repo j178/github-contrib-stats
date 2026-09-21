@@ -274,6 +274,7 @@ pub struct RepositoryWithStargazerCount {
 pub struct PullRequest {
     pub url: String,
     pub created_at: DateTime<Utc>,
+    pub merged: bool,
     pub repository: RepositoryWithStargazerCount,
 }
 
@@ -297,6 +298,7 @@ query ($q: String!, $perPage: Int!, $cursor: String) {
         ... on PullRequest {
           url
           createdAt
+          merged
           repository {
             stargazerCount
           }
@@ -377,10 +379,8 @@ async fn get_all_pages_of_pr(body: Value, total: Option<u32>) -> Result<(u32, Ve
     Ok((total_all_query, all_prs))
 }
 
-pub async fn get_contributed_repos(
-    username: &str,
-    max_repos: Option<usize>,
-) -> Result<Vec<ContributedRepo>> {
+/// Fetches all public pull requests authored by the user, excluding their own repositories.
+pub async fn get_pull_requests(username: &str) -> Result<Vec<PullRequest>> {
     // https://docs.github.com/en/rest/search?apiVersion=2022-11-28
     // For authenticated requests, you can make up to 30 requests per minute for all search endpoints except for the "Search code" endpoint.
     // The "Search code" endpoint requires you to authenticate and limits you to 10 requests per minute.
@@ -437,8 +437,21 @@ pub async fn get_contributed_repos(
         remaining_count = remaining_count.saturating_sub(MAX_RESULTS);
     }
 
+    Ok(all_prs)
+}
+
+/// Groups pull requests by repository, ordered by PR count and then latest PR creation date.
+/// When `merged_only` is true, counts and first/last PRs include only merged pull requests.
+pub fn get_contributed_repos(
+    prs: Vec<PullRequest>,
+    max_repos: Option<usize>,
+    merged_only: bool,
+) -> Vec<ContributedRepo> {
     let mut groups: HashMap<String, Vec<_>> = HashMap::new();
-    for pr in all_prs {
+    for pr in prs {
+        if merged_only && !pr.merged {
+            continue;
+        }
         let Some(repo_name) = repository_name_from_pull_request_url(&pr.url) else {
             error!("failed to parse repository name from PR URL: {}", pr.url);
             continue;
@@ -470,12 +483,55 @@ pub async fn get_contributed_repos(
         repos.truncate(n);
     }
 
-    Ok(repos)
+    repos
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn merged_only_filters_before_counting_sorting_and_limiting_repositories() {
+        let prs: Vec<PullRequest> = [
+            ("many-open", 1, false),
+            ("many-open", 2, true),
+            ("many-open", 3, false),
+            ("many-open", 4, false),
+            ("more-merged", 5, true),
+            ("more-merged", 6, true),
+            ("unmerged", 7, false),
+        ]
+        .into_iter()
+        .map(|(repo, day, merged)| PullRequest {
+            url: format!("https://github.com/owner/{repo}/pull/{day}"),
+            created_at: format!("2026-06-{day:02}T00:00:00Z").parse().unwrap(),
+            merged,
+            repository: RepositoryWithStargazerCount {
+                stargazer_count: 42,
+            },
+        })
+        .collect();
+
+        let all = get_contributed_repos(prs.clone(), None, false);
+        assert_eq!(all.len(), 3);
+        assert_eq!(all[0].full_name, "owner/many-open");
+        assert_eq!(all[0].pr_count, 4);
+        assert_eq!(all[0].first_pr, prs[0]);
+        assert_eq!(all[0].last_pr, prs[3]);
+
+        let merged = get_contributed_repos(prs.clone(), None, true);
+        assert_eq!(merged.len(), 2);
+        assert_eq!(merged[0].full_name, "owner/more-merged");
+        assert_eq!(merged[0].pr_count, 2);
+        assert_eq!(merged[1].pr_count, 1);
+        assert_eq!(merged[1].first_pr, prs[1]);
+        assert_eq!(merged[1].last_pr, prs[1]);
+        assert_eq!(
+            get_contributed_repos(prs.clone(), Some(1), true),
+            merged[..1]
+        );
+        assert!(get_contributed_repos(vec![prs[0].clone()], None, true).is_empty());
+    }
 
     #[test]
     fn pull_request_search_result_accepts_null_edges() {
@@ -491,6 +547,7 @@ mod tests {
                     "node": {
                         "url": "https://github.com/owner/repo/pull/1",
                         "createdAt": "2026-06-15T00:00:00Z",
+                        "merged": true,
                         "repository": {
                             "stargazerCount": 42,
                         },

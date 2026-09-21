@@ -20,6 +20,7 @@ struct StatsParams {
     min_stars: u32,
     min_forks: u32,
     min_prs: u32,
+    merged_only: bool,
 }
 
 #[tokio::main]
@@ -101,6 +102,12 @@ fn parse_stats_params(req: &Request) -> Result<StatsParams, Error> {
         min_stars: parse_u32(&query, "min_stars")?,
         min_forks: parse_u32(&query, "min_forks")?,
         min_prs: parse_u32(&query, "min_prs")?,
+        merged_only: query
+            .get("merged_only")
+            .map(|value| value.parse::<bool>())
+            .transpose()
+            .map_err(|_| anyhow!("merged_only must be true or false"))?
+            .unwrap_or(false),
     })
 }
 
@@ -228,15 +235,13 @@ async fn render_created_svg(username: &str, req: &Request) -> Result<Response<Bo
 async fn render_contributed_svg(username: &str, req: &Request) -> Result<Response<Body>, Error> {
     let params = parse_stats_params(req)?;
 
-    let cache_key = format!("contributed:{}:all", username);
-    let repos = get_cached_or_compute(&cache_key, || {
-        github::get_contributed_repos(&username, None)
-    })
-    .await?;
+    let cache_key = format!("pull_requests:{username}:all");
+    let prs = get_cached_or_compute(&cache_key, || github::get_pull_requests(username)).await?;
+    let repos = github::get_contributed_repos(prs, None, params.merged_only);
     let repos = filter_contributed_repos(repos, params);
 
     let mut buf = String::new();
-    SvgRenderer::new().render_contributed_repos(&mut buf, &repos, &username);
+    SvgRenderer::new().render_contributed_repos(&mut buf, &repos, username, params.merged_only);
 
     Ok(Response::builder()
         .status(StatusCode::OK)

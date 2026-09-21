@@ -35,11 +35,13 @@ const PULL_REQUEST_ICON_PATH: &str = "M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.
 
 pub trait Render {
     fn render_created_repos(&self, output: &mut String, repos: &[Repository], author: &str);
+    /// Renders contribution stats with PR count links matching the `merged_only` filter.
     fn render_contributed_repos(
         &self,
         output: &mut String,
         repos: &[ContributedRepo],
         author: &str,
+        merged_only: bool,
     );
 }
 
@@ -94,11 +96,22 @@ impl Render for MarkdownRenderer {
         output: &mut String,
         repos: &[ContributedRepo],
         author: &str,
+        merged_only: bool,
     ) {
         let mut table = Table::new();
         table.set_format(*MARKDOWN_TABLE);
+        let pr_count_header = if merged_only {
+            "Merged PRs"
+        } else {
+            "Total PRs"
+        };
         table.set_titles(row![
-            "No.", "Name", "Stars", "First PR", "Last PR", "PR Count"
+            "No.",
+            "Name",
+            "Stars",
+            "First PR",
+            "Last PR",
+            pr_count_header
         ]);
 
         for (id, repo) in repos.iter().enumerate() {
@@ -120,8 +133,9 @@ impl Render for MarkdownRenderer {
                     repo.last_pr.url.as_str()
                 ),
                 format!(
-                    "[{}](https://github.com/{}/pulls?q=is%3Apr+author%3A{})",
-                    repo.pr_count, repo.full_name, author
+                    "[{}]({})",
+                    repo.pr_count,
+                    pull_requests_url(repo, author, merged_only)
                 )
             ]);
         }
@@ -135,6 +149,17 @@ impl Render for MarkdownRenderer {
         ]);
         output.push_str(table.to_string().as_str());
     }
+}
+
+fn pull_requests_url(repo: &ContributedRepo, author: &str, merged_only: bool) -> String {
+    let mut url = format!(
+        "https://github.com/{}/pulls?q=is%3Apr+author%3A{}",
+        repo.full_name, author
+    );
+    if merged_only {
+        url.push_str("+is%3Amerged");
+    }
+    url
 }
 
 pub struct SvgRenderer {
@@ -739,6 +764,7 @@ impl Render for SvgRenderer {
         output: &mut String,
         repos: &[ContributedRepo],
         author: &str,
+        merged_only: bool,
     ) {
         let col_widths = [
             50,  // No.
@@ -779,7 +805,19 @@ impl Render for SvgRenderer {
         ));
 
         // Header texts
-        let headers = ["No.", "Name", "Stars", "First PR", "Last PR", "PR Count"];
+        let pr_count_header = if merged_only {
+            "Merged PRs"
+        } else {
+            "Total PRs"
+        };
+        let headers = [
+            "No.",
+            "Name",
+            "Stars",
+            "First PR",
+            "Last PR",
+            pr_count_header,
+        ];
         let mut x = 10;
         for (i, header) in headers.iter().enumerate() {
             document = document.add(self.create_header_text(
@@ -851,10 +889,7 @@ impl Render for SvgRenderer {
 
             // PR Count
             x += col_widths[4];
-            let pr_link = format!(
-                "https://github.com/{}/pulls?q=is%3Apr+author%3A{}",
-                repo.full_name, author
-            );
+            let pr_link = pull_requests_url(repo, author, merged_only);
             document = document.add(
                 Anchor::new()
                     .set("href", pr_link)
@@ -938,6 +973,7 @@ mod tests {
             first_pr: PullRequest {
                 url: "https://github.com/first".to_string(),
                 created_at: Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap(),
+                merged: true,
                 repository: RepositoryWithStargazerCount {
                     stargazer_count: stars,
                 },
@@ -945,6 +981,7 @@ mod tests {
             last_pr: PullRequest {
                 url: "https://github.com/last".to_string(),
                 created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+                merged: true,
                 repository: RepositoryWithStargazerCount {
                     stargazer_count: stars,
                 },
@@ -1017,7 +1054,12 @@ mod tests {
 
         // Write contributed repos SVG
         let mut contributed_output = String::new();
-        renderer.render_contributed_repos(&mut contributed_output, &contributed_repos, "test-user");
+        renderer.render_contributed_repos(
+            &mut contributed_output,
+            &contributed_repos,
+            "test-user",
+            false,
+        );
         let contributed_path = target_dir.join("test_contributed.svg");
         fs::write(&contributed_path, &contributed_output).unwrap();
         println!(
@@ -1043,7 +1085,12 @@ mod tests {
         assert!(created_output.contains(r#"viewBox="0 0 780 "#));
 
         let mut contributed_output = String::new();
-        renderer.render_contributed_repos(&mut contributed_output, &contributed_repos, "test-user");
+        renderer.render_contributed_repos(
+            &mut contributed_output,
+            &contributed_repos,
+            "test-user",
+            false,
+        );
         assert!(contributed_output.contains(r#"viewBox="0 0 780 "#));
     }
 }
