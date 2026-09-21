@@ -137,16 +137,25 @@
             width: 7rem;
         }
 
-        .repo-filters {
+        .repository-options {
             grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: minmax(0, 36rem) minmax(0, 12rem);
+            gap: 1.5rem;
+            margin-top: 0.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--line);
+        }
+
+        .option-group {
             min-width: 0;
             margin: 0;
             padding: 0;
             border: 0;
         }
 
-        .repo-filters legend {
-            margin-bottom: 0.5rem;
+        .option-group legend {
+            margin-bottom: 0.8rem;
             padding: 0;
             color: var(--muted);
             font-size: 0.85rem;
@@ -155,49 +164,86 @@
         .filter-controls {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 0.55rem;
+            gap: 0.75rem;
         }
 
-        .threshold-field {
+        .filter-control {
+            display: grid;
+            align-content: start;
+            gap: 0.4rem;
+            min-width: 0;
+        }
+
+        .filter-label {
+            color: var(--text);
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .number-field {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            min-width: 0;
+            min-height: 2.55rem;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: #ffffff;
+        }
+
+        .number-field:hover {
+            border-color: #8c959f;
+        }
+
+        .number-field:focus-within {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .number-prefix {
+            padding-left: 0.65rem;
             color: var(--muted);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             white-space: nowrap;
         }
 
-        .threshold-field input[type="number"] {
-            width: 5.5rem;
-            flex-shrink: 0;
+        .number-field input {
+            width: 100%;
+            min-width: 0;
+            min-height: 2.55rem;
+            padding: 0.5rem 0.65rem;
+            border: 0;
+            border-radius: inherit;
+            background: transparent;
+            color: var(--text);
+            font-size: 0.85rem;
             font-variant-numeric: tabular-nums;
             text-align: right;
         }
 
-        .repo-limit {
-            grid-column: 1 / -1;
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 0.4rem 1rem;
+        .number-field input:focus-visible {
+            outline: none;
         }
 
         .repo-limit-hint {
+            margin-top: 0.15rem;
             color: var(--muted);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
 
         .merged-only {
-            grid-column: 1 / -1;
             display: flex;
             align-items: center;
             gap: 0.4rem;
+            margin-top: 0.15rem;
             color: var(--muted);
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             cursor: pointer;
         }
 
         .merged-only input {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
             margin: 0;
             accent-color: var(--accent);
         }
@@ -211,14 +257,8 @@
             text-transform: uppercase;
         }
 
-        .field input[type="text"],
-        .field input[type="number"] {
+        .field input[type="text"] {
             width: 100%;
-        }
-
-        .field input[type="text"],
-        .field input[type="number"],
-        .threshold-field input[type="number"] {
             min-height: 2.55rem;
             padding: 0.5rem 0.65rem;
             border: 1px solid transparent;
@@ -227,9 +267,7 @@
             color: var(--text);
         }
 
-        .field input[type="text"]:hover,
-        .field input[type="number"]:hover,
-        .threshold-field input[type="number"]:hover {
+        .field input[type="text"]:hover {
             border-color: var(--line);
         }
 
@@ -535,8 +573,8 @@
                 grid-template-columns: 1fr;
             }
 
-            .filter-controls {
-                grid-template-columns: 1fr;
+            .repository-options {
+                grid-template-columns: minmax(0, 36rem);
             }
         }
 
@@ -548,6 +586,10 @@
             .generator {
                 grid-template-columns: 1fr;
                 padding: 0.85rem 0.85rem 0.65rem;
+            }
+
+            .filter-controls {
+                grid-template-columns: 1fr;
             }
 
             .generator-actions {
@@ -696,7 +738,7 @@
         }
 
         function updatePrFilterLabel() {
-            byId('pr-filter-unit').textContent = byId('merged_only').checked ? 'merged PRs' : 'PRs';
+            byId('pr-filter-unit').textContent = byId('merged_only').checked ? 'Merged PRs' : 'PRs';
         }
 
         function showError(message) {
@@ -987,41 +1029,52 @@
                 <input type="text" id="username" name="username" autocomplete="username" spellcheck="false" required autofocus>
             </div>
             <div class="generator-actions">
-                <button id="generate-button" type="submit" class="generate-button">Generate</button>
+                <button id="generate-button" type="submit" class="generate-button">Show stats</button>
                 <button id="share-button" type="button" class="share-button" aria-controls="share-panel" aria-expanded="false" onclick="toggleSharePanel()" disabled>Share</button>
             </div>
-            <fieldset class="repo-filters">
-                <legend>Only show repositories with</legend>
-                <div class="filter-controls">
-                    <label class="threshold-field" for="min_stars">
-                        At least
-                        <input type="number" id="min_stars" name="min_stars" min="0" step="1" inputmode="numeric" placeholder="0">
-                        stars
-                    </label>
-                    <label class="threshold-field" for="min_forks">
-                        At least
-                        <input type="number" id="min_forks" name="min_forks" min="0" step="1" inputmode="numeric" placeholder="0">
-                        forks
-                    </label>
-                    <label class="threshold-field" for="min_prs">
-                        At least
-                        <input type="number" id="min_prs" name="min_prs" min="0" step="1" inputmode="numeric" placeholder="0">
-                        <span id="pr-filter-unit">PRs</span>
-                    </label>
-                </div>
-            </fieldset>
-            <div class="repo-limit">
-                <label class="threshold-field" for="max_repos">
-                    Show up to
-                    <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All" aria-describedby="repo-limit-hint">
-                    repositories
-                </label>
-                <span id="repo-limit-hint" class="repo-limit-hint">Leave empty for all</span>
+            <div class="repository-options">
+                <fieldset class="option-group">
+                    <legend>Only show repositories with</legend>
+                    <div class="filter-controls">
+                        <div class="filter-control">
+                            <label class="filter-label" id="stars-label" for="min_stars">Stars</label>
+                            <div class="number-field">
+                                <span class="number-prefix" id="stars-prefix">At least</span>
+                                <input type="number" id="min_stars" name="min_stars" min="0" step="1" inputmode="numeric" placeholder="0" aria-labelledby="stars-prefix stars-label">
+                            </div>
+                        </div>
+                        <div class="filter-control">
+                            <label class="filter-label" id="forks-label" for="min_forks">Forks</label>
+                            <div class="number-field">
+                                <span class="number-prefix" id="forks-prefix">At least</span>
+                                <input type="number" id="min_forks" name="min_forks" min="0" step="1" inputmode="numeric" placeholder="0" aria-labelledby="forks-prefix forks-label">
+                            </div>
+                        </div>
+                        <div class="filter-control">
+                            <label class="filter-label" id="pr-filter-unit" for="min_prs">PRs</label>
+                            <div class="number-field">
+                                <span class="number-prefix" id="prs-prefix">At least</span>
+                                <input type="number" id="min_prs" name="min_prs" min="0" step="1" inputmode="numeric" placeholder="0" aria-labelledby="prs-prefix pr-filter-unit">
+                            </div>
+                            <label class="merged-only" for="merged_only">
+                                <input type="checkbox" id="merged_only" name="merged_only">
+                                Only count merged PRs
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset class="option-group">
+                    <legend>Display</legend>
+                    <div class="filter-control">
+                        <label class="filter-label" id="repos-label" for="max_repos">Repositories</label>
+                        <div class="number-field">
+                            <span class="number-prefix" id="repos-prefix">Show up to</span>
+                            <input type="number" id="max_repos" name="max_repos" min="1" step="1" inputmode="numeric" placeholder="All" aria-labelledby="repos-prefix repos-label" aria-describedby="repo-limit-hint">
+                        </div>
+                        <span id="repo-limit-hint" class="repo-limit-hint">Leave empty for all</span>
+                    </div>
+                </fieldset>
             </div>
-            <label class="merged-only" for="merged_only">
-                <input type="checkbox" id="merged_only" name="merged_only">
-                Only count merged PRs
-            </label>
             <p id="form-error" class="form-error" role="alert"></p>
         </form>
 
