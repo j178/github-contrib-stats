@@ -45,37 +45,24 @@ async fn main() -> Result<()> {
                 .long("max-repos")
                 .help("Maximum number of repositories to show"),
         )
-        .arg(
-            clap::Arg::new("merged-only")
-                .long("merged-only")
-                .action(clap::ArgAction::SetTrue)
-                .help("Only include merged pull requests in contribution stats"),
-        )
         .get_matches();
 
     let username = matches.get_one::<String>("username").unwrap();
     let max_repos = matches.get_one::<usize>("max-repos").copied();
-    let merged_only = matches.get_flag("merged-only");
 
     let (created_repos, prs) = join!(
         github::get_created_repos(username, max_repos),
         github::get_pull_requests(username),
     );
     let created_repos = created_repos?;
-    let contributed_repos = github::get_contributed_repos(prs?, max_repos, merged_only);
+    let contributed_repos = github::get_contributed_repos(prs?, max_repos);
 
     // Handle different output scenarios
     if let Some(update_file) = matches.get_one::<String>("update") {
         // Scenario 1: Update existing markdown file
         let path = Path::new(update_file);
         if path.exists() {
-            update_markdown(
-                path,
-                created_repos,
-                contributed_repos,
-                username,
-                merged_only,
-            )?;
+            update_markdown(path, created_repos, contributed_repos, username)?;
         } else {
             bail!("File {} does not exist", update_file);
         }
@@ -90,12 +77,7 @@ async fn main() -> Result<()> {
                     String::from("# My GitHub Contribution Stats\n\n## Repos I Created\n\n");
                 render.render_created_repos(&mut buf, &created_repos, username);
                 buf.push_str("\n## Repos I've Contributed To\n\n");
-                render.render_contributed_repos(
-                    &mut buf,
-                    &contributed_repos,
-                    username,
-                    merged_only,
-                );
+                render.render_contributed_repos(&mut buf, &contributed_repos, username);
                 std::fs::write(output, buf)?;
             }
             "svg" => {
@@ -106,12 +88,7 @@ async fn main() -> Result<()> {
                 std::fs::write("created.svg", &buf)?;
 
                 buf.clear();
-                render.render_contributed_repos(
-                    &mut buf,
-                    &contributed_repos,
-                    username,
-                    merged_only,
-                );
+                render.render_contributed_repos(&mut buf, &contributed_repos, username);
                 std::fs::write("contributed.svg", buf)?;
             }
             _ => unreachable!("Invalid format"),
@@ -126,7 +103,6 @@ fn update_markdown(
     created_repos: Vec<Repository>,
     contributed_repos: Vec<ContributedRepo>,
     username: &str,
-    merged_only: bool,
 ) -> Result<()> {
     let render = MarkdownRenderer::new();
     let mut buf;
@@ -152,7 +128,7 @@ fn update_markdown(
     render.render_created_repos(&mut part_buf, &created_repos, username);
     replace_template(&mut buf, "created_repos", &part_buf)?;
     part_buf.clear();
-    render.render_contributed_repos(&mut part_buf, &contributed_repos, username, merged_only);
+    render.render_contributed_repos(&mut part_buf, &contributed_repos, username);
     replace_template(&mut buf, "contributed", &part_buf)?;
 
     std::fs::write(path, buf)?;

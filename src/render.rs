@@ -34,13 +34,12 @@ const PULL_REQUEST_ICON_PATH: &str = "M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.
 
 pub trait Render {
     fn render_created_repos(&self, output: &mut String, repos: &[Repository], author: &str);
-    /// Renders contribution stats with PR count links matching the `merged_only` filter.
+    /// Renders contribution stats with separate merged and total PR counts and links.
     fn render_contributed_repos(
         &self,
         output: &mut String,
         repos: &[ContributedRepo],
         author: &str,
-        merged_only: bool,
     );
 }
 
@@ -95,25 +94,20 @@ impl Render for MarkdownRenderer {
         output: &mut String,
         repos: &[ContributedRepo],
         author: &str,
-        merged_only: bool,
     ) {
         let mut table = Table::new();
         table.set_format(*MARKDOWN_TABLE);
-        let pr_count_header = if merged_only {
-            "Merged PRs"
-        } else {
-            "Total PRs"
-        };
         table.set_titles(row![
             "No.",
             "Name",
             "Stars",
             "First PR",
             "Last PR",
-            pr_count_header
+            "PRs (Merged / Total)"
         ]);
 
         for (id, repo) in repos.iter().enumerate() {
+            let pr_url = pull_requests_url(repo, author);
             table.add_row(row![
                 id + 1,
                 format!(
@@ -132,9 +126,9 @@ impl Render for MarkdownRenderer {
                     repo.last_pr.url.as_str()
                 ),
                 format!(
-                    "[{}]({})",
-                    repo.pr_count,
-                    pull_requests_url(repo, author, merged_only)
+                    "[{}]({pr_url}+is%3Amerged) / [{}]({pr_url})",
+                    format_pr_count(u64::from(repo.merged_pr_count)),
+                    format_pr_count(u64::from(repo.pr_count)),
                 )
             ]);
         }
@@ -144,21 +138,36 @@ impl Render for MarkdownRenderer {
             "",
             "",
             "",
-            repos.iter().map(|x| x.pr_count).sum::<u32>(),
+            format!(
+                "{} / {}",
+                format_pr_count(
+                    repos
+                        .iter()
+                        .map(|repo| u64::from(repo.merged_pr_count))
+                        .sum()
+                ),
+                format_pr_count(repos.iter().map(|repo| u64::from(repo.pr_count)).sum()),
+            ),
         ]);
         output.push_str(table.to_string().as_str());
     }
 }
 
-fn pull_requests_url(repo: &ContributedRepo, author: &str, merged_only: bool) -> String {
-    let mut url = format!(
+fn pull_requests_url(repo: &ContributedRepo, author: &str) -> String {
+    format!(
         "https://github.com/{}/pulls?q=is%3Apr+author%3A{}",
         repo.full_name, author
-    );
-    if merged_only {
-        url.push_str("+is%3Amerged");
+    )
+}
+
+fn format_pr_count(number: u64) -> String {
+    let mut text = number.to_string();
+    let mut index = text.len();
+    while index > 3 {
+        index -= 3;
+        text.insert(index, ',');
     }
-    url
+    text
 }
 
 pub struct SvgRenderer {
@@ -170,7 +179,7 @@ pub struct SvgRenderer {
     link_color: String,
     star_color: String,
     fork_color: String,
-    pr_color: String,
+    merged_pr_color: String,
     total_row_bg: String,
 }
 
@@ -184,14 +193,14 @@ impl SvgRenderer {
     pub fn new() -> Self {
         SvgRenderer {
             font_family: "Arial, sans-serif".to_string(),
-            header_bg: "#E8EEF6".to_string(),    // Soft cool header
-            row_bg_even: "#ffffff".to_string(),  // White
-            row_bg_odd: "#F1F5F9".to_string(),   // Light cool gray
-            text_color: "#334155".to_string(),   // Slate gray
-            link_color: "#2563EB".to_string(),   // Bright blue for links
-            star_color: "#EAB308".to_string(),   // Yellow for stars
-            fork_color: "#10B981".to_string(),   // Emerald for forks
-            pr_color: "#2DA44E".to_string(),     // GitHub PR green
+            header_bg: "#E8EEF6".to_string(),   // Soft cool header
+            row_bg_even: "#ffffff".to_string(), // White
+            row_bg_odd: "#F1F5F9".to_string(),  // Light cool gray
+            text_color: "#334155".to_string(),  // Slate gray
+            link_color: "#2563EB".to_string(),  // Bright blue for links
+            star_color: "#EAB308".to_string(),  // Yellow for stars
+            fork_color: "#10B981".to_string(),  // Emerald for forks
+            merged_pr_color: "#1F883D".to_string(),
             total_row_bg: "#E2E8F0".to_string(), // Cool gray for total
         }
     }
@@ -543,6 +552,55 @@ impl SvgRenderer {
             .set("dominant-baseline", "middle") // Vertical alignment
     }
 
+    fn create_pr_counts(
+        &self,
+        x: i32,
+        y: i32,
+        merged: u64,
+        total: u64,
+        pr_url: Option<&str>,
+    ) -> Group {
+        let merged_text = self
+            .create_text(x - 8, y, &format_pr_count(merged), &self.merged_pr_color)
+            .set("text-anchor", "end")
+            .set("font-weight", "bold");
+        let total_text = self
+            .create_text(x + 8, y, &format_pr_count(total), &self.text_color)
+            .set("opacity", 0.8);
+        let group = Group::new()
+            .set("style", "font-variant-numeric: tabular-nums")
+            .set("role", "group")
+            .set(
+                "aria-label",
+                format!("{merged} merged out of {total} total PRs"),
+            )
+            .add(
+                self.create_text(x, y, "/", &self.text_color)
+                    .set("text-anchor", "middle")
+                    .set("opacity", 0.6),
+            );
+
+        if let Some(url) = pr_url {
+            group
+                .add(
+                    Anchor::new()
+                        .set("href", format!("{url}+is%3Amerged"))
+                        .set("target", "_blank")
+                        .set("aria-label", format!("{merged} merged PRs"))
+                        .add(merged_text),
+                )
+                .add(
+                    Anchor::new()
+                        .set("href", url)
+                        .set("target", "_blank")
+                        .set("aria-label", format!("{total} total PRs"))
+                        .add(total_text),
+                )
+        } else {
+            group.add(merged_text).add(total_text)
+        }
+    }
+
     fn create_link(&self, x: i32, y: i32, text: &str, url: &str) -> Anchor {
         Anchor::new()
             .set("href", url)
@@ -761,15 +819,21 @@ impl Render for SvgRenderer {
         output: &mut String,
         repos: &[ContributedRepo],
         author: &str,
-        merged_only: bool,
     ) {
+        let total_prs: u64 = repos.iter().map(|repo| u64::from(repo.pr_count)).sum();
+        let merged_prs: u64 = repos
+            .iter()
+            .map(|repo| u64::from(repo.merged_pr_count))
+            .sum();
+        // Reserve space for both totals, which are at least as wide as any row's counts.
+        let pr_count_width = (32 + format_pr_count(total_prs).len() as i32 * 16).max(140);
         let col_widths = [
-            50,  // No.
-            270, // Name
-            120, // Stars
-            120, // First PR
-            120, // Last PR
-            100, // PR Count
+            50,                                                // No.
+            SVG_WIDTH - 50 - 120 - 100 - 100 - pr_count_width, // Name
+            120,                                               // Stars
+            100,                                               // First PR
+            100,                                               // Last PR
+            pr_count_width,
         ];
         let row_height = 40;
         let stats_header_height = STATS_HEADER_HEIGHT;
@@ -802,19 +866,7 @@ impl Render for SvgRenderer {
         ));
 
         // Header texts
-        let pr_count_header = if merged_only {
-            "Merged PRs"
-        } else {
-            "Total PRs"
-        };
-        let headers = [
-            "No.",
-            "Name",
-            "Stars",
-            "First PR",
-            "Last PR",
-            pr_count_header,
-        ];
+        let headers = ["No.", "Name", "Stars", "First PR", "Last PR"];
         let mut x = 10;
         for (i, header) in headers.iter().enumerate() {
             document = document.add(self.create_header_text(
@@ -824,6 +876,23 @@ impl Render for SvgRenderer {
             ));
             x += col_widths[i];
         }
+        let x_prs = total_width - pr_count_width / 2;
+        document = document
+            .add(
+                self.create_header_text(x_prs, stats_header_height + 13, "PRs")
+                    .set("text-anchor", "middle"),
+            )
+            .add(
+                self.create_text(
+                    x_prs,
+                    stats_header_height + 29,
+                    "Merged / Total",
+                    &self.text_color,
+                )
+                .set("text-anchor", "middle")
+                .set("font-size", 11)
+                .set("opacity", 0.8),
+            );
 
         // Data rows
         let mut y = stats_header_height + row_height;
@@ -884,22 +953,14 @@ impl Render for SvgRenderer {
                 &repo.last_pr.url,
             ));
 
-            // PR Count
-            x += col_widths[4];
-            let pr_link = pull_requests_url(repo, author, merged_only);
-            document = document.add(
-                Anchor::new()
-                    .set("href", pr_link)
-                    .set("target", "_blank")
-                    .add(self.create_number_with_effect(
-                        x,
-                        y + row_height / 2,
-                        repo.pr_count,
-                        &self.pr_color,
-                        false,
-                        false,
-                    )),
-            );
+            let pr_url = pull_requests_url(repo, author);
+            document = document.add(self.create_pr_counts(
+                x_prs,
+                y + row_height / 2,
+                u64::from(repo.merged_pr_count),
+                u64::from(repo.pr_count),
+                Some(&pr_url),
+            ));
 
             y += row_height;
         }
@@ -913,17 +974,10 @@ impl Render for SvgRenderer {
                 .set("font-weight", "bold"),
         );
 
-        let total_prs: u32 = repos.iter().map(|x| x.pr_count).sum();
-        let x_prs =
-            10 + col_widths[0] + col_widths[1] + col_widths[2] + col_widths[3] + col_widths[4];
-        document = document.add(self.create_number_with_effect(
-            x_prs,
-            y + row_height / 2,
-            total_prs,
-            &self.pr_color,
-            false,
-            true,
-        ));
+        document = document.add(
+            self.create_pr_counts(x_prs, y + row_height / 2, merged_prs, total_prs, None)
+                .set("font-weight", "bold"),
+        );
 
         document = document
             .add(self.create_stats_footer(total_width, y + row_height + stats_footer_height / 2));
@@ -962,11 +1016,17 @@ mod tests {
         }
     }
 
-    fn create_test_contributed_repo(name: &str, stars: u32, prs: u32) -> ContributedRepo {
+    fn create_test_contributed_repo(
+        name: &str,
+        stars: u32,
+        merged_prs: u32,
+        prs: u32,
+    ) -> ContributedRepo {
         ContributedRepo {
             full_name: name.to_string(),
             stargazer_count: stars,
             pr_count: prs,
+            merged_pr_count: merged_prs,
             first_pr: PullRequest {
                 url: "https://github.com/first".to_string(),
                 created_at: Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap(),
@@ -1028,12 +1088,12 @@ mod tests {
         ];
 
         let contributed_repos = vec![
-            create_test_contributed_repo("org/repo1", 10500, 100),
-            create_test_contributed_repo("org/repo2", 5000, 50),
-            create_test_contributed_repo("org/repo3", 1500, 25),
-            create_test_contributed_repo("org/repo4", 800, 10),
-            create_test_contributed_repo("org/repo5", 100, 5),
-            create_test_contributed_repo("org/repo6", 10, 1),
+            create_test_contributed_repo("org/repo1", 10500, 12480, 15620),
+            create_test_contributed_repo("org/repo2", 5000, 348, 412),
+            create_test_contributed_repo("org/repo3", 1500, 80, 80),
+            create_test_contributed_repo("org/repo4", 800, 0, 6),
+            create_test_contributed_repo("org/repo5", 100, 5, 5),
+            create_test_contributed_repo("org/repo6", 10, 0, 1),
         ];
 
         // Create directory if it doesn't exist
@@ -1051,12 +1111,7 @@ mod tests {
 
         // Write contributed repos SVG
         let mut contributed_output = String::new();
-        renderer.render_contributed_repos(
-            &mut contributed_output,
-            &contributed_repos,
-            "test-user",
-            false,
-        );
+        renderer.render_contributed_repos(&mut contributed_output, &contributed_repos, "test-user");
         let contributed_path = target_dir.join("test_contributed.svg");
         fs::write(&contributed_path, &contributed_output).unwrap();
         println!(
@@ -1075,19 +1130,14 @@ mod tests {
     fn svg_renderers_use_same_viewbox_width() {
         let renderer = SvgRenderer::new();
         let repos = vec![create_test_repo("repo-rust", "Rust", 10500, 500, false)];
-        let contributed_repos = vec![create_test_contributed_repo("org/repo1", 1000, 20)];
+        let contributed_repos = vec![create_test_contributed_repo("org/repo1", 1000, 8, 20)];
 
         let mut created_output = String::new();
         renderer.render_created_repos(&mut created_output, &repos, "test-user");
         assert!(created_output.contains(r#"viewBox="0 0 780 "#));
 
         let mut contributed_output = String::new();
-        renderer.render_contributed_repos(
-            &mut contributed_output,
-            &contributed_repos,
-            "test-user",
-            false,
-        );
+        renderer.render_contributed_repos(&mut contributed_output, &contributed_repos, "test-user");
         assert!(contributed_output.contains(r#"viewBox="0 0 780 "#));
     }
 }

@@ -66,18 +66,11 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> worker::Result<Respo
                 .transpose()
                 .map_err(|_| worker::Error::RustError("max_repos is not an integer".into()))?;
 
-            let merged_only = query
-                .get("merged_only")
-                .map(|value| value.parse::<bool>())
-                .transpose()
-                .map_err(|_| worker::Error::RustError("merged_only must be true or false".into()))?
-                .unwrap_or(false);
-
             let prs = github::get_pull_requests(username).await.map_err(to_err)?;
-            let repos = github::get_contributed_repos(prs, max_repos, merged_only);
+            let repos = github::get_contributed_repos(prs, max_repos);
 
             let mut buf = String::new();
-            SvgRenderer::new().render_contributed_repos(&mut buf, &repos, username, merged_only);
+            SvgRenderer::new().render_contributed_repos(&mut buf, &repos, username);
             Response::ok(buf)
         })
         .get_async("/worker-version", |_, ctx| async move {

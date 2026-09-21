@@ -226,24 +226,6 @@
             font-size: 0.75rem;
         }
 
-        .merged-only {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            margin-top: 0.15rem;
-            color: var(--muted);
-            font-size: 0.75rem;
-            cursor: pointer;
-        }
-
-        .merged-only input {
-            width: 14px;
-            height: 14px;
-            flex-shrink: 0;
-            margin: 0;
-            accent-color: var(--accent);
-        }
-
         .field label {
             display: block;
             margin-bottom: 0.35rem;
@@ -658,7 +640,7 @@
             const maxRepos = readNumberParam('max_repos', 'Repository limit', 1);
             const minStars = readNumberParam('min_stars', 'Star threshold', 0);
             const minForks = readNumberParam('min_forks', 'Fork threshold', 0);
-            const minPrs = readNumberParam('min_prs', 'PR threshold', 0);
+            const minPrs = readNumberParam('min_prs', 'Total PR threshold', 0);
 
             if (maxRepos) {
                 params.set('max_repos', maxRepos);
@@ -671,9 +653,6 @@
             }
             if (minPrs && minPrs !== '0') {
                 params.set('min_prs', minPrs);
-            }
-            if (byId('merged_only').checked) {
-                params.set('merged_only', 'true');
             }
 
             return params;
@@ -697,6 +676,7 @@
 
             const params = new URLSearchParams(window.location.search);
             params.delete('show_header');
+            params.delete('merged_only');
             params.set('username', username);
             return params;
         }
@@ -717,7 +697,6 @@
                 svgParams.delete('min_forks');
             } else {
                 svgParams.delete('min_prs');
-                svgParams.delete('merged_only');
             }
 
             const query = svgParams.toString();
@@ -730,13 +709,7 @@
             byId('min_stars').value = params?.get('min_stars') || '';
             byId('min_forks').value = params?.get('min_forks') || '';
             byId('min_prs').value = params?.get('min_prs') || '';
-            byId('merged_only').checked = params?.get('merged_only') === 'true';
-            updatePrFilterLabel();
             updateGenerateButton();
-        }
-
-        function updatePrFilterLabel() {
-            byId('pr-filter-unit').textContent = byId('merged_only').checked ? 'Merged PRs' : 'PRs';
         }
 
         function showError(message) {
@@ -992,7 +965,6 @@
             const form = byId('generator-form');
             form.addEventListener('submit', submitGenerator);
             form.addEventListener('input', updateGenerateButton);
-            byId('merged_only').addEventListener('change', updatePrFilterLabel);
             setupSharePanel();
 
             const params = currentParams();
@@ -1056,15 +1028,11 @@
                             </div>
                         </div>
                         <div class="filter-control">
-                            <label class="filter-label" id="pr-filter-unit" for="min_prs">PRs</label>
+                            <label class="filter-label" id="prs-label" for="min_prs">Total PRs</label>
                             <div class="number-field">
                                 <span class="number-prefix" id="prs-prefix">At least</span>
-                                <input type="number" id="min_prs" name="min_prs" min="0" step="1" inputmode="numeric" placeholder="0" aria-labelledby="prs-prefix pr-filter-unit">
+                                <input type="number" id="min_prs" name="min_prs" min="0" step="1" inputmode="numeric" placeholder="0" aria-labelledby="prs-prefix prs-label">
                             </div>
-                            <label class="merged-only" for="merged_only">
-                                <input type="checkbox" id="merged_only" name="merged_only">
-                                Only count merged PRs
-                            </label>
                         </div>
                         <div class="filter-control">
                             <label class="filter-label" id="repos-label" for="max_repos">Repositories</label>

@@ -193,7 +193,9 @@ pub async fn get_created_repos(
 pub struct ContributedRepo {
     pub full_name: String,
     pub stargazer_count: u32,
+    /// Total pull requests, regardless of state.
     pub pr_count: u32,
+    pub merged_pr_count: u32,
     pub first_pr: PullRequest,
     pub last_pr: PullRequest,
 }
@@ -441,17 +443,13 @@ pub async fn get_pull_requests(username: &str) -> Result<Vec<PullRequest>> {
 }
 
 /// Groups pull requests by repository, ordered by PR count and then latest PR creation date.
-/// When `merged_only` is true, counts and first/last PRs include only merged pull requests.
+/// Counts and first/last PRs include all pull requests, with merged PRs counted separately.
 pub fn get_contributed_repos(
     prs: Vec<PullRequest>,
     max_repos: Option<usize>,
-    merged_only: bool,
 ) -> Vec<ContributedRepo> {
     let mut groups: HashMap<String, Vec<_>> = HashMap::new();
     for pr in prs {
-        if merged_only && !pr.merged {
-            continue;
-        }
         let Some(repo_name) = repository_name_from_pull_request_url(&pr.url) else {
             error!("failed to parse repository name from PR URL: {}", pr.url);
             continue;
@@ -467,11 +465,13 @@ pub fn get_contributed_repos(
             let first_pr = prs.first()?.clone();
             let last_pr = prs.last()?.clone();
             let pr_count = u32::try_from(prs.len()).ok()?;
+            let merged_pr_count = u32::try_from(prs.iter().filter(|pr| pr.merged).count()).ok()?;
 
             Some(ContributedRepo {
                 full_name: repo_name,
                 stargazer_count: last_pr.repository.stargazer_count,
                 pr_count,
+                merged_pr_count,
                 first_pr,
                 last_pr,
             })
@@ -491,7 +491,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn merged_only_filters_before_counting_sorting_and_limiting_repositories() {
+    fn contribution_counts_preserve_all_prs_while_counting_merged_prs() {
         let prs: Vec<PullRequest> = [
             ("many-open", 1, false),
             ("many-open", 2, true),
@@ -512,25 +512,19 @@ mod tests {
         })
         .collect();
 
-        let all = get_contributed_repos(prs.clone(), None, false);
+        let all = get_contributed_repos(prs.clone(), None);
         assert_eq!(all.len(), 3);
         assert_eq!(all[0].full_name, "owner/many-open");
         assert_eq!(all[0].pr_count, 4);
+        assert_eq!(all[0].merged_pr_count, 1);
         assert_eq!(all[0].first_pr, prs[0]);
         assert_eq!(all[0].last_pr, prs[3]);
 
-        let merged = get_contributed_repos(prs.clone(), None, true);
-        assert_eq!(merged.len(), 2);
-        assert_eq!(merged[0].full_name, "owner/more-merged");
-        assert_eq!(merged[0].pr_count, 2);
-        assert_eq!(merged[1].pr_count, 1);
-        assert_eq!(merged[1].first_pr, prs[1]);
-        assert_eq!(merged[1].last_pr, prs[1]);
-        assert_eq!(
-            get_contributed_repos(prs.clone(), Some(1), true),
-            merged[..1]
-        );
-        assert!(get_contributed_repos(vec![prs[0].clone()], None, true).is_empty());
+        assert_eq!(all[1].full_name, "owner/more-merged");
+        assert_eq!((all[1].merged_pr_count, all[1].pr_count), (2, 2));
+        assert_eq!(all[2].full_name, "owner/unmerged");
+        assert_eq!((all[2].merged_pr_count, all[2].pr_count), (0, 1));
+        assert_eq!(get_contributed_repos(prs, Some(1)), all[..1]);
     }
 
     #[test]
